@@ -5,7 +5,7 @@ Use this checklist to track your progress in implementing the full application.
 ## Phase 1: Initial Setup (Start Here!)
 
 ### Prerequisites Installation
-- [ ] Install .NET 8 SDK
+- [ ] Install .NET 10 SDK
 - [ ] Install Node.js 20+
 - [ ] Install Docker Desktop
 - [ ] Install PostgreSQL tools (optional)
