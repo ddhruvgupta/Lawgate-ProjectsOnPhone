@@ -1,31 +1,25 @@
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
-WORKDIR /src
+FROM mcr.microsoft.com/dotnet/sdk:10.0
+WORKDIR /app
 
-# Copy all csproj files and restore dependencies
+# Copy csproj files and restore
 COPY LegalDocSystem.Domain/LegalDocSystem.Domain.csproj LegalDocSystem.Domain/
 COPY LegalDocSystem.Application/LegalDocSystem.Application.csproj LegalDocSystem.Application/
 COPY LegalDocSystem.Infrastructure/LegalDocSystem.Infrastructure.csproj LegalDocSystem.Infrastructure/
 COPY LegalDocSystem.API/LegalDocSystem.API.csproj LegalDocSystem.API/
 
-# Restore dependencies
 RUN dotnet restore LegalDocSystem.API/LegalDocSystem.API.csproj
 
 # Copy everything else
 COPY . .
 
-# Build and publish
-WORKDIR /src/LegalDocSystem.API
-RUN dotnet publish -c Release -o /app/publish
+# Build the application
+RUN dotnet build LegalDocSystem.API/LegalDocSystem.API.csproj -c Debug --no-restore
 
-# Build runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:10.0
-WORKDIR /app
-COPY --from=build /app/publish .
+# Set working directory to API project
+WORKDIR /app/LegalDocSystem.API
 
 # Expose port
 EXPOSE 8080
 
-# Set environment
-ENV ASPNETCORE_URLS=http://+:8080
-
-ENTRYPOINT ["dotnet", "LegalDocSystem.API.dll"]
+# Run the application
+CMD ["dotnet", "run", "--no-build", "--no-restore", "--urls", "http://0.0.0.0:8080"]
