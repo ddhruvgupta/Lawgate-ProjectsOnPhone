@@ -16,6 +16,7 @@ public class Document : BaseEntity
     public DocumentType DocumentType { get; set; } = DocumentType.Other;
     public string? Description { get; set; }
     public string? Tags { get; set; } // JSON array of tags
+    public DocumentStatus Status { get; set; } = DocumentStatus.Pending;
     
     // Azure Blob Storage
     public string BlobStoragePath { get; set; } = string.Empty;

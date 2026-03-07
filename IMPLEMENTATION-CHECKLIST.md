@@ -90,7 +90,9 @@ Use this checklist to track your progress in implementing the full application.
 - [x] Add JWT middleware
 
 ### Build API Endpoints
-- [ ] Create User controller
+- [x] Create User controller
+- [x] Create Company controller
+- [x] Create Project controller
 - [ ] Create Role controller
 - [x] Add health check endpoint
 - [x] Implement authorization policies
@@ -317,6 +319,7 @@ Use this section to track your progress:
 
 **Notes**:
 - Auth is fully done.
+- Azure Blob Storage integration is implemented (Service & Config ready).
 - Basic frontend structure is done but missing utilities/hooks/libs.
 - Core feature controllers (Project/Doc/User/Company) are missing.
 

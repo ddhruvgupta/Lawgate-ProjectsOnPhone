@@ -20,6 +20,20 @@ services:
       timeout: 5s
       retries: 5
 
+  azurite:
+    image: mcr.microsoft.com/azure-storage/azurite
+    container_name: lawgate-azurite
+    hostname: azurite
+    ports:
+      - "10000:10000"
+      - "10001:10001"
+      - "10002:10002"
+    volumes:
+      - azurite_data:/data
+    networks:
+      - lawgate-network
+    restart: unless-stopped
+
   backend:
     build:
       context: ./backend
@@ -28,6 +42,7 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_password_change_in_production
+      - ConnectionStrings__AzureStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
       - ASPNETCORE_URLS=http://+:8080
     ports:
       - "5059:8080"
@@ -58,6 +73,7 @@ services:
 
 volumes:
   postgres_data:
+  azurite_data:
 
 networks:
   lawgate-network:
