@@ -311,25 +311,41 @@ Use this checklist to track your progress in implementing the full application.
 
 Use this section to track your progress:
 
-**Current Phase**: Phase 3 (Backend API Builders) & Phase 2 (Frontend Refinement)
+**Current Phase**: Phase 5 (Integration & Testing)
 
 **Started**: 2025-01-20
 
+**Last Updated**: 2026-03-07
+
 **Target Completion**: TBD
 
+**Recently Completed** (March 2026 session):
+- All core service layer: CompanyService, ProjectService, UserService, DocumentService
+- All service interfaces: ICompanyService, IProjectService, IUserService, IDocumentService, IBlobStorageService
+- All API controllers: Company, Project, User, Document (tenant-scoped via JWT CompanyId claim)
+- All DTOs: Companies, Projects, Users, Documents
+- AzureBlobStorageService with SAS token generation and chunked upload support
+- DocumentStatus enum + EF Core migration `AddDocumentStatus`
+- DocumentCleanupService background job
+- Updated .gitignore (removed duplicates, added build artifacts)
+
 **Notes**:
-- Auth is fully done.
-- Azure Blob Storage integration is implemented (Service & Config ready).
-- Basic frontend structure is done but missing utilities/hooks/libs.
-- Core feature controllers (Project/Doc/User/Company) are missing.
+- Auth is fully done (login, register, JWT, BCrypt).
+- All core CRUD controllers and services are implemented.
+- Azure Blob Storage integration is wired up (needs real connection string in secrets).
+- Basic frontend structure is done but missing utilities/hooks/packages.
+- Backend needs: DbSeeder, error handling middleware, input validation.
+- Frontend needs: React Query, Hook Form, Zod, Heroicons, Headless UI, layout components.
 
 **Blockers**:
 - None currently.
 
 **Next Steps**:
-1. Implement Backend Company & User Controllers.
-2. Install missing frontend packages (React Query, Hook Form, etc).
-3. Implement Project Controller. 
+1. Install missing frontend packages (`react-hook-form`, `zod`, `@tanstack/react-query`, `@headlessui/react`, `@heroicons/react`, `clsx`).
+2. Create `src/hooks/` and `src/utils/` directories and base layout component.
+3. Create `DbSeeder.cs` to seed default roles and a test CompanyOwner user.
+4. Add global error handling middleware to the API.
+5. Run end-to-end integration test: register → login → API call with JWT.
 
 ---
 
