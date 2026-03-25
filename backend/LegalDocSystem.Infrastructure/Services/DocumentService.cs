@@ -131,10 +131,16 @@ namespace LegalDocSystem.Infrastructure.Services
 
         public async Task<string> GenerateDownloadUrlAsync(int documentId, int userId)
         {
-            var document = await _context.Documents.FindAsync(documentId);
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) throw new KeyNotFoundException("User not found");
+
+            var document = await _context.Documents
+                .Include(d => d.Project)
+                .FirstOrDefaultAsync(d => d.Id == documentId);
             if (document == null) throw new KeyNotFoundException("Document not found");
 
-            // TODO: Auth check for project access
+            if (document.Project.CompanyId != user.CompanyId)
+                throw new UnauthorizedAccessException("Access to this document is not allowed");
 
             return _blobStorageService.GetSasUri(document.BlobStoragePath, document.BlobContainerName, BlobSasPermissions.Read, 10);
         }
@@ -161,13 +167,23 @@ namespace LegalDocSystem.Infrastructure.Services
 
         public async Task DeleteDocumentAsync(int documentId, int userId)
         {
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) throw new KeyNotFoundException("User not found");
+
             var document = await _context.Documents
                 .Include(d => d.UploadedBy)
+                .Include(d => d.Project)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
 
             if (document == null) throw new KeyNotFoundException("Document not found");
 
-            // TODO: Auth check
+            if (document.Project.CompanyId != user.CompanyId)
+                throw new UnauthorizedAccessException("Access to this document is not allowed");
+
+            // Only the uploader or admins/owners can delete
+            var isAdminOrOwner = user.Role == Domain.Enums.UserRole.CompanyOwner || user.Role == Domain.Enums.UserRole.Admin;
+            if (document.UploadedByUserId != userId && !isAdminOrOwner)
+                throw new UnauthorizedAccessException("Only the uploader or an admin can delete this document");
 
             await _blobStorageService.DeleteAsync(document.BlobStoragePath, document.BlobContainerName);
 

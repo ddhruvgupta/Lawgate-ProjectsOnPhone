@@ -2,6 +2,7 @@ using LegalDocSystem.Infrastructure.Data;
 using LegalDocSystem.Application.Interfaces;
 using LegalDocSystem.Infrastructure.Services;
 using LegalDocSystem.Infrastructure.BackgroundServices;
+using LegalDocSystem.API.Middleware;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
@@ -91,6 +92,8 @@ if (app.Environment.IsDevelopment())
 
 app.UseSerilogRequestLogging();
 
+app.UseMiddleware<GlobalExceptionMiddleware>();
+
 app.UseHttpsRedirection();
 
 app.UseCors();
@@ -108,5 +111,14 @@ app.MapGet("/health", () => Results.Ok(new {
 .WithName("HealthCheck");
 
 Log.Information("Legal Document System API starting...");
+
+// Run database seeder on startup (development only)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<LegalDocSystem.Infrastructure.Data.ApplicationDbContext>();
+    var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
+    await LegalDocSystem.Infrastructure.Data.DbSeeder.SeedAsync(dbContext, seederLogger);
+}
 
 app.Run();
