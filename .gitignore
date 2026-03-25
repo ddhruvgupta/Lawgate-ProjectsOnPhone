@@ -82,3 +82,6 @@ frontend/.vite/
 .env.development.local
 .env.test.local
 .env.production.local
+
+# Claude AI working directory
+.claude/
