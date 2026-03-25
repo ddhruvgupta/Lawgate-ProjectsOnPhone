@@ -67,7 +67,6 @@ TEST-RESULTS.md
 pgdata/
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Frontend build output & cache
