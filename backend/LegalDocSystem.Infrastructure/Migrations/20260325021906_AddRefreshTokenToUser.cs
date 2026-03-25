@@ -22,11 +22,22 @@ namespace LegalDocSystem.Infrastructure.Migrations
                 table: "Users",
                 type: "timestamp with time zone",
                 nullable: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_RefreshToken",
+                table: "Users",
+                column: "RefreshToken",
+                unique: true,
+                filter: "\"RefreshToken\" IS NOT NULL");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropIndex(
+                name: "IX_Users_RefreshToken",
+                table: "Users");
+
             migrationBuilder.DropColumn(
                 name: "RefreshToken",
                 table: "Users");

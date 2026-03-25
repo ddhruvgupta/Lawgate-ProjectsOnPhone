@@ -19,8 +19,11 @@ export function useApi<T>() {
       const data = await apiCall();
       setState({ data, isLoading: false, error: null });
       return data;
-    } catch (err: any) {
-      const message = err.response?.data?.message || err.message || 'An error occurred';
+    } catch (err: unknown) {
+      const message =
+        (err as { response?: { data?: { message?: string } }; message?: string })?.response?.data?.message ||
+        (err as { message?: string })?.message ||
+        'An error occurred';
       setState({ data: null, isLoading: false, error: message });
       throw err;
     }

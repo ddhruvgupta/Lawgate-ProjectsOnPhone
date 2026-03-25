@@ -1,9 +1,11 @@
+using System.Security.Cryptography;
 using LegalDocSystem.Application.DTOs.Auth;
 using LegalDocSystem.Application.Interfaces;
 using LegalDocSystem.Domain.Entities;
 using LegalDocSystem.Domain.Enums;
 using LegalDocSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace LegalDocSystem.Infrastructure.Services;
@@ -13,15 +15,24 @@ public class AuthService : IAuthService
     private readonly ApplicationDbContext _context;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly ILogger<AuthService> _logger;
+    private readonly int _jwtExpiryMinutes;
 
     public AuthService(
         ApplicationDbContext context,
         IJwtTokenService jwtTokenService,
+        IConfiguration configuration,
         ILogger<AuthService> logger)
     {
         _context = context;
         _jwtTokenService = jwtTokenService;
         _logger = logger;
+        _jwtExpiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"] ?? "1440");
+    }
+
+    private static string HashRefreshToken(string token)
+    {
+        var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
+        return Convert.ToBase64String(bytes);
     }
 
     public async Task<TokenResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -102,16 +113,17 @@ public class AuthService : IAuthService
                 user.CompanyId);
 
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
+            var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
 
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            user.RefreshToken = HashRefreshToken(refreshToken);
+            user.RefreshTokenExpiry = refreshTokenExpiry;
             await _context.SaveChangesAsync();
 
             return new TokenResponseDto
             {
                 Token = token,
                 RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(1440),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtExpiryMinutes),
                 User = new UserDto
                 {
                     Id = user.Id,
@@ -176,9 +188,10 @@ public class AuthService : IAuthService
                 user.CompanyId);
 
             var refreshToken = _jwtTokenService.GenerateRefreshToken();
+            var refreshTokenExpiry = DateTime.UtcNow.AddDays(7);
 
-            user.RefreshToken = refreshToken;
-            user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
+            user.RefreshToken = HashRefreshToken(refreshToken);
+            user.RefreshTokenExpiry = refreshTokenExpiry;
             await _context.SaveChangesAsync();
 
             _logger.LogInformation("User logged in: {Email}", user.Email);
@@ -187,7 +200,7 @@ public class AuthService : IAuthService
             {
                 Token = token,
                 RefreshToken = refreshToken,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(1440),
+                ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtExpiryMinutes),
                 User = new UserDto
                 {
                     Id = user.Id,
@@ -215,9 +228,11 @@ public class AuthService : IAuthService
 
     public async Task<TokenResponseDto> RefreshTokenAsync(string refreshToken)
     {
+        var tokenHash = HashRefreshToken(refreshToken);
+
         var user = await _context.Users
             .Include(u => u.Company)
-            .FirstOrDefaultAsync(u => u.RefreshToken == refreshToken);
+            .FirstOrDefaultAsync(u => u.RefreshToken == tokenHash);
 
         if (user == null || user.RefreshTokenExpiry == null || user.RefreshTokenExpiry < DateTime.UtcNow)
             throw new UnauthorizedAccessException("Invalid or expired refresh token");
@@ -227,10 +242,19 @@ public class AuthService : IAuthService
 
         var newAccessToken = _jwtTokenService.GenerateToken(user.Id, user.Email, user.Role.ToString(), user.CompanyId);
         var newRefreshToken = _jwtTokenService.GenerateRefreshToken();
+        var newRefreshTokenHash = HashRefreshToken(newRefreshToken);
+        var newRefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
 
-        user.RefreshToken = newRefreshToken;
-        user.RefreshTokenExpiry = DateTime.UtcNow.AddDays(7);
-        await _context.SaveChangesAsync();
+        // Atomic rotation: only update if the stored hash still matches (prevents replay attacks)
+        var rowsAffected = await _context.Database.ExecuteSqlInterpolatedAsync(
+            $@"UPDATE ""Users""
+               SET ""RefreshToken"" = {newRefreshTokenHash},
+                   ""RefreshTokenExpiry"" = {newRefreshTokenExpiry}
+             WHERE ""Id"" = {user.Id}
+               AND ""RefreshToken"" = {tokenHash}");
+
+        if (rowsAffected == 0)
+            throw new UnauthorizedAccessException("Invalid or expired refresh token");
 
         _logger.LogInformation("Refresh token rotated for user: {Email}", user.Email);
 
@@ -238,7 +262,7 @@ public class AuthService : IAuthService
         {
             Token = newAccessToken,
             RefreshToken = newRefreshToken,
-            ExpiresAt = DateTime.UtcNow.AddMinutes(1440),
+            ExpiresAt = DateTime.UtcNow.AddMinutes(_jwtExpiryMinutes),
             User = new UserDto
             {
                 Id = user.Id,

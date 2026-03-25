@@ -112,13 +112,25 @@ app.MapGet("/health", () => Results.Ok(new {
 
 Log.Information("Legal Document System API starting...");
 
-// Run database seeder on startup (development only)
+// Run database migrations and seeder on startup (development only)
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<LegalDocSystem.Infrastructure.Data.ApplicationDbContext>();
     var seederLogger = scope.ServiceProvider.GetRequiredService<ILogger<Program>>();
-    await LegalDocSystem.Infrastructure.Data.DbSeeder.SeedAsync(dbContext, seederLogger);
+    try
+    {
+        seederLogger.LogInformation("Applying database migrations...");
+        await dbContext.Database.MigrateAsync();
+        seederLogger.LogInformation("Database migrations applied successfully. Seeding development data...");
+        await LegalDocSystem.Infrastructure.Data.DbSeeder.SeedAsync(dbContext, seederLogger);
+        seederLogger.LogInformation("Development database seeding completed successfully.");
+    }
+    catch (Exception ex)
+    {
+        seederLogger.LogError(ex, "An error occurred while migrating or seeding the development database.");
+        throw;
+    }
 }
 
 app.Run();

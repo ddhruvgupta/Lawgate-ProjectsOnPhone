@@ -183,7 +183,7 @@ namespace LegalDocSystem.Infrastructure.Services
             // Only the uploader or admins/owners can delete
             var isAdminOrOwner = user.Role == Domain.Enums.UserRole.CompanyOwner || user.Role == Domain.Enums.UserRole.Admin;
             if (document.UploadedByUserId != userId && !isAdminOrOwner)
-                throw new UnauthorizedAccessException("Only the uploader or an admin can delete this document");
+                throw new UnauthorizedAccessException("Only the uploader, an admin, or a company owner can delete this document");
 
             await _blobStorageService.DeleteAsync(document.BlobStoragePath, document.BlobContainerName);
 

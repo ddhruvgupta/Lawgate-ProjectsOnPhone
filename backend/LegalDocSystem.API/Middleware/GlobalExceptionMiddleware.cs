@@ -30,6 +30,9 @@ public class GlobalExceptionMiddleware
 
     private static Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
+        if (context.Response.HasStarted)
+            return Task.CompletedTask;
+
         var (statusCode, message) = exception switch
         {
             KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),

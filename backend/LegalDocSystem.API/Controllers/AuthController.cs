@@ -95,6 +95,33 @@ public class AuthController : ControllerBase
     }
 
     /// <summary>
+    /// Refresh access token using a valid refresh token
+    /// </summary>
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<TokenResponseDto>>> RefreshToken([FromBody] RefreshTokenRequest request)
+    {
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.RefreshToken))
+                return BadRequest(ApiResponse<TokenResponseDto>.ErrorResponse("Refresh token is required"));
+
+            var result = await _authService.RefreshTokenAsync(request.RefreshToken);
+            return Ok(ApiResponse<TokenResponseDto>.SuccessResponse(result, "Token refreshed successfully"));
+        }
+        catch (UnauthorizedAccessException ex)
+        {
+            _logger.LogWarning(ex, "Token refresh failed");
+            return Unauthorized(ApiResponse<TokenResponseDto>.ErrorResponse(ex.Message));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during token refresh");
+            return StatusCode(500, ApiResponse<TokenResponseDto>.ErrorResponse("An error occurred during token refresh"));
+        }
+    }
+
+    /// <summary>
     /// Validate JWT token
     /// </summary>
     [HttpPost("validate")]

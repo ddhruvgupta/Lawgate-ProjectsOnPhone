@@ -94,6 +94,6 @@ public static class DbSeeder
         context.Projects.Add(project);
         await context.SaveChangesAsync();
 
-        logger.LogInformation("Database seeded successfully. Demo credentials: admin@demolawfirm.com / Admin@123");
+        logger.LogInformation("Database seeded successfully. Demo admin user email: admin@demolawfirm.com");
     }
 }

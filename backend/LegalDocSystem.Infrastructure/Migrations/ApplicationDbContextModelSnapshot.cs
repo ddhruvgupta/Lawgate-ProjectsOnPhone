@@ -455,6 +455,10 @@ namespace LegalDocSystem.Infrastructure.Migrations
                     b.HasIndex("CompanyId", "Email")
                         .IsUnique();
 
+                    b.HasIndex("RefreshToken")
+                        .IsUnique()
+                        .HasFilter("\"RefreshToken\" IS NOT NULL");
+
                     b.ToTable("Users");
                 });
 
