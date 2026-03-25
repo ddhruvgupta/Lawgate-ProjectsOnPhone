@@ -12,8 +12,8 @@ RUN dotnet restore LegalDocSystem.API/LegalDocSystem.API.csproj
 # Copy everything else
 COPY . .
 
-# Build the application
-RUN dotnet build LegalDocSystem.API/LegalDocSystem.API.csproj -c Debug --no-restore
+# Build the application (restore again to ensure Linux-compatible NuGet cache after COPY)
+RUN dotnet build LegalDocSystem.API/LegalDocSystem.API.csproj -c Debug
 
 # Set working directory to API project
 WORKDIR /app/LegalDocSystem.API

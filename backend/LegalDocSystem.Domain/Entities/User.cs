@@ -22,6 +22,10 @@ public class User : BaseEntity
     // For password reset
     public string? ResetToken { get; set; }
     public DateTime? ResetTokenExpiry { get; set; }
+
+    // For refresh tokens
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiry { get; set; }
     
     // Navigation properties
     public Company Company { get; set; } = null!;

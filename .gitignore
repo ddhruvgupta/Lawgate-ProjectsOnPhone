@@ -67,7 +67,6 @@ TEST-RESULTS.md
 pgdata/
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Frontend build output & cache
@@ -83,5 +82,5 @@ frontend/.vite/
 .env.test.local
 .env.production.local
 
-# Claude AI working directory
+# Claude Code local settings (machine-specific)
 .claude/
