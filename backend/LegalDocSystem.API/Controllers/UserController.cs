@@ -55,8 +55,9 @@ public class UserController : ControllerBase
             return BadRequest("Invalid token: CompanyId missing");
 
         var actorId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var actorEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "unknown";
 
-        var user = await _userService.CreateUserAsync(companyId, dto);
+        var user = await _userService.CreateUserAsync(companyId, dto, actorEmail);
 
         await _auditService.LogAsync(
             companyId, actorId,

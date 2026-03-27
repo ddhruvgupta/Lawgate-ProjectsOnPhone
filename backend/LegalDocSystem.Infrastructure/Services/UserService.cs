@@ -46,7 +46,7 @@ public class UserService : IUserService
         return MapToDto(user);
     }
 
-    public async Task<UserDto> CreateUserAsync(int companyId, CreateUserDto dto)
+    public async Task<UserDto> CreateUserAsync(int companyId, CreateUserDto dto, string createdBy)
     {
         // Check if email exists
         if (await _context.Users.AnyAsync(u => u.Email == dto.Email))
@@ -65,7 +65,7 @@ public class UserService : IUserService
             Role = dto.Role,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
-            CreatedBy = "System" // Or current user if we pass it
+            CreatedBy = createdBy
         };
 
         _context.Users.Add(user);

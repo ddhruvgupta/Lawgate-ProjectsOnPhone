@@ -50,8 +50,9 @@ public class ProjectController : ControllerBase
             return BadRequest("Invalid token: CompanyId missing");
 
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "unknown";
 
-        var project = await _projectService.CreateProjectAsync(companyId, dto);
+        var project = await _projectService.CreateProjectAsync(companyId, dto, userEmail);
 
         await _auditService.LogAsync(
             companyId, userId,
@@ -73,8 +74,9 @@ public class ProjectController : ControllerBase
             return BadRequest("Invalid token: CompanyId missing");
 
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+        var userEmail = User.FindFirst(ClaimTypes.Email)?.Value ?? "unknown";
 
-        var project = await _projectService.UpdateProjectAsync(id, companyId, dto);
+        var project = await _projectService.UpdateProjectAsync(id, companyId, dto, userEmail);
 
         await _auditService.LogAsync(
             companyId, userId,
