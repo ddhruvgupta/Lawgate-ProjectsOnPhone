@@ -61,7 +61,7 @@ services:
     environment:
       - VITE_API_URL=http://localhost:5059/api
     ports:
-      - "5173:5173"
+      - "5174:5173"
     depends_on:
       - backend
     networks:

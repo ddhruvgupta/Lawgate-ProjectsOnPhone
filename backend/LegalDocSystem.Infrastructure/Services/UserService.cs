@@ -60,7 +60,7 @@ public class UserService : IUserService
             FirstName = dto.FirstName,
             LastName = dto.LastName,
             Email = dto.Email,
-            Phone = dto.Phone,
+            Phone = dto.Phone ?? string.Empty,
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
             Role = dto.Role,
             IsActive = true,

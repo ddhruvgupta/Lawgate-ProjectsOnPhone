@@ -3,32 +3,47 @@ namespace LegalDocSystem.Domain.Enums;
 public enum ProjectStatus
 {
     /// <summary>
-    /// Project is being planned
+    /// Matter received, client onboarding in progress
     /// </summary>
-    Planning = 1,
-    
+    Intake = 1,
+
     /// <summary>
-    /// Project is actively in progress
+    /// Matter is actively being worked on
     /// </summary>
     Active = 2,
-    
+
     /// <summary>
-    /// Project is temporarily on hold
+    /// Evidence and document gathering phase
     /// </summary>
-    OnHold = 3,
-    
+    Discovery = 3,
+
     /// <summary>
-    /// Project is completed
+    /// Settlement or resolution discussions underway
     /// </summary>
-    Completed = 4,
-    
+    Negotiation = 4,
+
     /// <summary>
-    /// Project has been cancelled
+    /// Scheduled before a tribunal, court, or arbitration panel
     /// </summary>
-    Cancelled = 5,
-    
+    Hearing = 5,
+
     /// <summary>
-    /// Project has been archived
+    /// Matter is temporarily paused or waiting
     /// </summary>
-    Archived = 6
+    OnHold = 6,
+
+    /// <summary>
+    /// Matter resolved via settlement or agreement
+    /// </summary>
+    Settled = 7,
+
+    /// <summary>
+    /// Matter concluded (won, lost, or withdrawn)
+    /// </summary>
+    Closed = 8,
+
+    /// <summary>
+    /// Long-term archive, no active work
+    /// </summary>
+    Archived = 9
 }
