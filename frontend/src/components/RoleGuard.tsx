@@ -27,8 +27,10 @@ export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) 
         </div>
         <h2 className="text-lg font-semibold text-gray-900 mb-1">Access Denied</h2>
         <p className="text-sm text-gray-500 max-w-xs mb-6">
-          Your account ({user.role}) doesn't have permission to view this page.
-          Contact your firm owner to request access.
+          {user
+            ? `Your account (${user.role}) doesn't have permission to view this page.`
+            : "You must be logged in to view this page."}
+          {user && " Contact your firm owner to request access."}
         </p>
         <Link
           to="/dashboard"
