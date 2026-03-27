@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse } from '../types/auth';
-import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest } from '../types';
+import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest, AuditLogsResponse } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5059/api';
 
@@ -113,6 +113,18 @@ class ApiService {
 
   async toggleUserStatus(id: number): Promise<TeamMember> {
     const response = await this.api.post<TeamMember>(`/users/${id}/toggle-status`);
+    return response.data;
+  }
+
+  // ─── Audit Logs ────────────────────────────────────────────────────────────
+
+  async getAuditLogs(params?: {
+    entityType?: string;
+    entityId?: number;
+    page?: number;
+    pageSize?: number;
+  }): Promise<AuditLogsResponse> {
+    const response = await this.api.get<AuditLogsResponse>('/audit', { params });
     return response.data;
   }
 }

@@ -81,6 +81,28 @@ export interface CreateTeamMemberRequest {
   role: 'Admin' | 'User';
 }
 
+// ─── Audit Logs ──────────────────────────────────────────────────────────────
+
+export interface AuditLog {
+  id: number;
+  action: string;
+  entityType: string;
+  entityId?: number;
+  description: string;
+  oldValues?: string;
+  userName: string;
+  userEmail: string;
+  createdAt: string;
+}
+
+export interface AuditLogsResponse {
+  items: AuditLog[];
+  totalCount: number;
+  page: number;
+  pageSize: number;
+  totalPages: number;
+}
+
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';

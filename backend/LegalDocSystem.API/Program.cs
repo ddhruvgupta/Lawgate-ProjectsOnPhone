@@ -43,6 +43,7 @@ builder.Services.AddScoped<IDocumentService, DocumentService>();
 builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
+builder.Services.AddScoped<IAuditService, AuditService>();
 
 // Register Background Services
 builder.Services.AddHostedService<DocumentCleanupService>();

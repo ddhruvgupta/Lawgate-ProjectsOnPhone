@@ -3,6 +3,7 @@ using LegalDocSystem.Application.DTOs.Users;
 using LegalDocSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace LegalDocSystem.API.Controllers;
 
@@ -12,10 +13,12 @@ namespace LegalDocSystem.API.Controllers;
 public class UserController : ControllerBase
 {
     private readonly IUserService _userService;
+    private readonly IAuditService _auditService;
 
-    public UserController(IUserService userService)
+    public UserController(IUserService userService, IAuditService auditService)
     {
         _userService = userService;
+        _auditService = auditService;
     }
 
     [HttpGet]
@@ -23,9 +26,7 @@ public class UserController : ControllerBase
     {
         var companyIdClaim = User.FindFirst("CompanyId");
         if (companyIdClaim == null || !int.TryParse(companyIdClaim.Value, out int companyId))
-        {
             return BadRequest("Invalid token: CompanyId missing");
-        }
 
         var users = await _userService.GetUsersAsync(companyId);
         return Ok(users);
@@ -35,18 +36,12 @@ public class UserController : ControllerBase
     public async Task<ActionResult<UserDto>> GetUser(int id)
     {
         var companyIdClaim = User.FindFirst("CompanyId");
-         if (companyIdClaim == null || !int.TryParse(companyIdClaim.Value, out int companyId))
-        {
+        if (companyIdClaim == null || !int.TryParse(companyIdClaim.Value, out int companyId))
             return BadRequest("Invalid token: CompanyId missing");
-        }
 
         var user = await _userService.GetUserAsync(id);
-
-        // Ensure user belongs to the same company
         if (user.CompanyId != companyId)
-        {
             return Forbid();
-        }
 
         return Ok(user);
     }
@@ -56,12 +51,19 @@ public class UserController : ControllerBase
     {
         var companyIdClaim = User.FindFirst("CompanyId");
         if (companyIdClaim == null || !int.TryParse(companyIdClaim.Value, out int companyId))
-        {
             return BadRequest("Invalid token: CompanyId missing");
-        }
 
-        // Only allow creation for current company
+        var actorId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
+
         var user = await _userService.CreateUserAsync(companyId, dto);
+
+        await _auditService.LogAsync(
+            companyId, actorId,
+            action: "User.Created",
+            entityType: "User",
+            entityId: user.Id,
+            description: $"Added team member {user.FirstName} {user.LastName} ({user.Email}) with role {user.Role}");
+
         return CreatedAtAction(nameof(GetUser), new { id = user.Id }, user);
     }
 
@@ -70,17 +72,26 @@ public class UserController : ControllerBase
     {
         var companyIdClaim = User.FindFirst("CompanyId");
         if (companyIdClaim == null || !int.TryParse(companyIdClaim.Value, out int companyId))
-        {
             return BadRequest("Invalid token: CompanyId missing");
-        }
+
+        var actorId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");
 
         var user = await _userService.GetUserAsync(id);
         if (user.CompanyId != companyId)
-        {
             return Forbid();
-        }
 
         var updatedUser = await _userService.ToggleUserStatusAsync(id);
+
+        var action = updatedUser.IsActive ? "User.Activated" : "User.Deactivated";
+        var verb = updatedUser.IsActive ? "Activated" : "Deactivated";
+
+        await _auditService.LogAsync(
+            companyId, actorId,
+            action: action,
+            entityType: "User",
+            entityId: id,
+            description: $"{verb} team member {updatedUser.FirstName} {updatedUser.LastName} ({updatedUser.Email})");
+
         return Ok(updatedUser);
     }
 }
