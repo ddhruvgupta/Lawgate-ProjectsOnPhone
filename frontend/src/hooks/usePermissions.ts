@@ -11,6 +11,7 @@ import type { UserRole } from '../types/auth';
  */
 
 const ADMIN_ROLES: UserRole[] = ['CompanyOwner', 'Admin'];
+const PLATFORM_ROLES: UserRole[] = ['PlatformAdmin', 'PlatformSuperAdmin'];
 
 export function usePermissions() {
   const { user } = useAuth();
@@ -27,6 +28,12 @@ export function usePermissions() {
     /** True only for CompanyOwner */
     isOwner: hasRole('CompanyOwner'),
 
+    /** True for PlatformAdmin and PlatformSuperAdmin (Lawgate staff) */
+    isPlatformAdmin: hasRole('PlatformAdmin', 'PlatformSuperAdmin'),
+
+    /** True only for PlatformSuperAdmin */
+    isPlatformSuperAdmin: hasRole('PlatformSuperAdmin'),
+
     // ── Route-level access ──────────────────────────────────────────────────
 
     /** Can view and manage the Team page */
@@ -34,6 +41,9 @@ export function usePermissions() {
 
     /** Can view the Activity / audit-log page */
     canAccessActivity: hasRole('CompanyOwner', 'Admin'),
+
+    /** Can access the Lawgate platform admin panel */
+    canAccessPlatformAdmin: hasRole('PlatformAdmin', 'PlatformSuperAdmin'),
 
     // ── In-page actions ─────────────────────────────────────────────────────
 
@@ -60,5 +70,8 @@ export function usePermissions() {
 
     /** Allowed roles for admin-only areas */
     ADMIN_ROLES,
+
+    /** Platform-level roles */
+    PLATFORM_ROLES,
   };
 }

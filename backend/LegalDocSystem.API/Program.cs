@@ -44,6 +44,7 @@ builder.Services.AddScoped<ICompanyService, CompanyService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IProjectService, ProjectService>();
 builder.Services.AddScoped<IAuditService, AuditService>();
+builder.Services.AddScoped<IPlatformAdminService, PlatformAdminService>();
 
 // Register Background Services
 builder.Services.AddHostedService<DocumentCleanupService>();
@@ -129,6 +130,7 @@ if (app.Environment.IsDevelopment())
         await dbContext.Database.MigrateAsync();
         seederLogger.LogInformation("Database migrations applied successfully. Seeding development data...");
         await LegalDocSystem.Infrastructure.Data.DbSeeder.SeedAsync(dbContext, seederLogger);
+        await LegalDocSystem.Infrastructure.Data.DbSeeder.SeedPlatformAdminsAsync(dbContext, seederLogger);
         seederLogger.LogInformation("Development database seeding completed successfully.");
     }
     catch (Exception ex)

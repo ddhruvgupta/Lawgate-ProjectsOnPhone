@@ -10,7 +10,7 @@ export interface User {
 }
 
 /** Must match backend LegalDocSystem.Domain.Enums.UserRole */
-export type UserRole = 'CompanyOwner' | 'Admin' | 'User' | 'Viewer';
+export type UserRole = 'CompanyOwner' | 'Admin' | 'User' | 'Viewer' | 'PlatformAdmin' | 'PlatformSuperAdmin';
 
 export interface LoginRequest {
   email: string;

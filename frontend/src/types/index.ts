@@ -103,6 +103,61 @@ export interface AuditLogsResponse {
   totalPages: number;
 }
 
+// ─── Platform Admin ──────────────────────────────────────────────────────────
+
+export interface CompanyOverview {
+  id: number;
+  name: string;
+  email: string;
+  phone: string;
+  subscriptionTier: string;
+  isActive: boolean;
+  createdAt: string;
+  userCount: number;
+  projectCount: number;
+  documentCount: number;
+  storageUsedBytes: number;
+}
+
+export interface CompanyUser {
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
+  role: string;
+  isActive: boolean;
+  lastLoginAt: string | null;
+}
+
+export interface CompanyProject {
+  id: number;
+  name: string;
+  clientName: string | null;
+  status: string;
+  documentCount: number;
+  createdAt: string;
+}
+
+export interface CompanyDetail extends CompanyOverview {
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  subscriptionEndDate: string | null;
+  users: CompanyUser[];
+  projects: CompanyProject[];
+}
+
+export interface CompanyDocument {
+  id: number;
+  fileName: string;
+  documentType: string;
+  fileSizeBytes: number;
+  projectName: string;
+  uploadedBy: string;
+  createdAt: string;
+}
+
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';

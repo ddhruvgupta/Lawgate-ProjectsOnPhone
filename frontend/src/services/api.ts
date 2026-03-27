@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse } from '../types/auth';
-import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest, AuditLogsResponse } from '../types';
+import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5059/api';
 
@@ -126,6 +126,19 @@ class ApiService {
   }): Promise<AuditLogsResponse> {
     const response = await this.api.get<AuditLogsResponse>('/audit', { params });
     return response.data;
+  }
+  // ── Platform Admin ────────────────────────────────────────────────────────
+
+  getPlatformCompanies(): Promise<CompanyOverview[]> {
+    return this.api.get('/admin/companies').then((r) => r.data);
+  }
+
+  getPlatformCompany(id: number): Promise<CompanyDetail> {
+    return this.api.get(`/admin/companies/${id}`).then((r) => r.data);
+  }
+
+  getPlatformCompanyDocuments(id: number): Promise<CompanyDocument[]> {
+    return this.api.get(`/admin/companies/${id}/documents`).then((r) => r.data);
   }
 }
 

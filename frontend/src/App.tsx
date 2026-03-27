@@ -13,6 +13,8 @@ import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { TeamPage } from './pages/TeamPage';
 import { ActivityPage } from './pages/ActivityPage';
 import { RoleGuard } from './components/RoleGuard';
+import { PlatformAdminPage } from './pages/admin/PlatformAdminPage';
+import { PlatformCompanyDetailPage } from './pages/admin/PlatformCompanyDetailPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -52,6 +54,17 @@ function App() {
                         <Route path="/activity" element={
                           <RoleGuard allowedRoles={['CompanyOwner', 'Admin']}>
                             <ActivityPage />
+                          </RoleGuard>
+                        } />
+                        {/* Platform admin routes */}
+                        <Route path="/admin" element={
+                          <RoleGuard allowedRoles={['PlatformAdmin', 'PlatformSuperAdmin']}>
+                            <PlatformAdminPage />
+                          </RoleGuard>
+                        } />
+                        <Route path="/admin/companies/:id" element={
+                          <RoleGuard allowedRoles={['PlatformAdmin', 'PlatformSuperAdmin']}>
+                            <PlatformCompanyDetailPage />
                           </RoleGuard>
                         } />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
