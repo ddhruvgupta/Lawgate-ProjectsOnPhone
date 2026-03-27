@@ -1,25 +1,55 @@
 # Frontend Documentation
 
 ## Overview
-React 18 application with Vite, Tailwind CSS, TypeScript, and modern development tools.
+React 19 application with Vite, Tailwind CSS 4, TypeScript, and modern development tools.
+
+## Pages (Routing)
+
+| Route | Component | Auth | Roles |
+|-------|-----------|------|-------|
+| `/login` | `LoginPage` | Public | — |
+| `/register` | `RegisterPage` | Public | — |
+| `/dashboard` | `DashboardPage` | Required | All |
+| `/projects` | `ProjectsPage` | Required | All |
+| `/projects/:id` | `ProjectDetailPage` | Required | All |
+| `/team` | `TeamPage` | Required | Owner, Admin |
+| `/activity` | `ActivityPage` | Required | Owner, Admin |
+| `/admin` | `PlatformAdminPage` | Required | PlatformAdmin |
+| `/admin/companies/:id` | `PlatformCompanyDetailPage` | Required | PlatformAdmin |
+
+## Components
+
+| Component | Description |
+|-----------|-------------|
+| `Layout` | Main app shell with sidebar navigation |
+| `ProtectedRoute` | Redirects unauthenticated users to `/login` |
+| `RoleGuard` | Renders children only for allowed roles (`allowedRoles` prop) |
+| `ProjectStatusBadge` | Colour-coded badge for ProjectStatus enum |
+| `ToastContainer` | Renders active toast notifications |
+
+## Contexts
+
+| Context | Provider | Purpose |
+|---------|----------|---------|
+| `AuthContext` | `AuthProvider` | Auth state — user, login(), logout(), token refresh |
+| `ToastContext` | `ToastProvider` | Toast notification queue — show/dismiss |
 
 ## Project Structure
 ```
 frontend/
 ├── src/
-│   ├── components/      # Reusable UI components
-│   ├── pages/           # Page components
-│   ├── services/        # API service layer
+│   ├── components/      # Layout, ProtectedRoute, RoleGuard, ProjectStatusBadge, ToastContainer
+│   ├── pages/           # 9 page components (see routing table above)
+│   ├── services/        # api.ts (Axios instance + interceptors)
 │   ├── hooks/           # Custom React hooks
-│   ├── contexts/        # React Context providers
+│   ├── contexts/        # AuthContext, ToastContext
 │   ├── utils/           # Utility functions
 │   ├── types/           # TypeScript type definitions
 │   ├── assets/          # Images, fonts, static files
-│   ├── App.tsx          # Root component
+│   ├── App.tsx          # Root component + router
 │   ├── main.tsx         # Application entry point
 │   └── index.css        # Global styles (Tailwind)
 ├── public/              # Static assets
-├── docs/                # Documentation
 ├── package.json         # Dependencies
 ├── vite.config.ts       # Vite configuration
 ├── tailwind.config.js   # Tailwind configuration
@@ -29,7 +59,7 @@ frontend/
 ## Getting Started
 
 ### Prerequisites
-- Node.js 20+ and npm
+- Node.js 24+ and npm
 - Backend API running
 
 ### Installation
@@ -62,23 +92,24 @@ npm test
 ## Technology Stack
 
 ### Core
-- **React 18** - UI library with concurrent features
-- **TypeScript** - Type safety and better DX
-- **Vite** - Lightning-fast build tool and dev server
+- **React 19.2.0** - UI library with concurrent features
+- **TypeScript 5.9.3** - Type safety and better DX
+- **Vite 7.2.4** - Lightning-fast build tool and dev server
 
 ### Styling
-- **Tailwind CSS** - Utility-first CSS framework
+- **Tailwind CSS 4.1.18** - Utility-first CSS framework
 - **PostCSS** - CSS transformations
 - **Autoprefixer** - Automatic vendor prefixes
 
 ### Routing
-- **React Router v6** - Client-side routing
+- **React Router v7 (7.12.0)** - Client-side routing
 - Lazy loading for code splitting
 - Protected routes for authentication
+- Role-based route guards via `RoleGuard` component
 
 ### State Management
-- **React Context** - Global state (auth, theme)
-- **React Query** - Server state management
+- **React Context** - Global state (AuthContext, ToastContext)
+- **React Query 5.95.2** - Server state management and caching
 - Local state with useState/useReducer
 
 ### HTTP Client
@@ -87,7 +118,7 @@ npm test
 - Automatic error handling
 
 ### Form Handling
-- **React Hook Form** - Performant form library
+- **React Hook Form 7.72.0** - Performant form library
 - **Zod** - TypeScript-first schema validation
 - Minimal re-renders
 

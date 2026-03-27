@@ -795,7 +795,7 @@ stages:
 ### Azure Resources
 
 **Compute:**
-- Azure App Service (Linux, .NET 8 Runtime)
+- Azure App Service (Linux, .NET 10 Runtime)
 - Auto-scale: 2-10 instances based on CPU/memory
 - Deployment slots: Production, Staging
 

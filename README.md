@@ -95,11 +95,19 @@ After running the recreate script:
 | DevOps | Docker Compose, GitHub Actions (planned) |
 
 ## Documentation
-- [Frontend Docs](./frontend/docs/)
-- [Backend Docs](./backend/docs/)
-- [Database Docs](./database/docs/)
-- [Azure Deployment Guide](./docs/azure-deployment.md)
-- [Implementation Checklist](./IMPLEMENTATION-CHECKLIST.md)
+
+All documentation is consolidated in [`/docs/`](./docs/) — see the [Documentation Index](./docs/index.md) for a full list.
+
+| Quick links | |
+|-------------|---|
+| [Quick Start](./docs/quick-start.md) | Get running in minutes |
+| [Quick Reference](./docs/quick-reference.md) | Common commands cheat sheet |
+| [Backend](./docs/backend.md) | API, controllers, services, migrations |
+| [Frontend](./docs/frontend.md) | Pages, components, routing |
+| [Database](./docs/database.md) | Schema, migrations, recreation |
+| [Architecture](./docs/architecture.md) | System design and decisions |
+| [Deployment](./docs/deployment.md) | Azure deployment guide |
+| [Implementation Checklist](./docs/implementation-checklist.md) | Progress tracker (Phase 6) |
 
 ## Environment Variables
 - Copy `frontend/.env.local` from `.env.example` — set `VITE_API_URL`

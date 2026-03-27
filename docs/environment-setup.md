@@ -4,21 +4,21 @@
 
 ### Windows Prerequisites
 
-#### 1. Install .NET 8 SDK
+#### 1. Install .NET 10 SDK
 ```powershell
-# Download from: https://dotnet.microsoft.com/download/dotnet/8.0
+# Download from: https://dotnet.microsoft.com/download/dotnet/10.0
 
 # Verify installation
-dotnet --version  # Should show 8.0.x
+dotnet --version  # Should show 10.0.x
 ```
 
 #### 2. Install Node.js & npm
 ```powershell
-# Download from: https://nodejs.org/ (LTS version 20+)
+# Download from: https://nodejs.org/ (LTS version 24+)
 
 # Verify installation
-node --version  # Should show v20.x.x
-npm --version   # Should show 10.x.x
+node --version  # Should show v24.x.x
+npm --version
 ```
 
 #### 3. Install Docker Desktop
@@ -124,8 +124,8 @@ dotnet build
 
 # Run
 dotnet run
-# API will be available at: http://localhost:5000
-# Swagger UI at: http://localhost:5000/swagger
+# API will be available at: http://localhost:5059
+# Swagger UI at: http://localhost:5059/swagger
 ```
 
 ### 4. Setup Frontend
@@ -139,24 +139,21 @@ npm install
 Copy-Item .env.example .env.local
 
 # Edit .env.local and set:
-# VITE_API_URL=http://localhost:5000/api
+# VITE_API_URL=http://localhost:5059/api
 
 # Run development server
 npm run dev
-# Frontend will be available at: http://localhost:3000
-```
-
-### 5. Verify Setup
+# Frontend will be available at: http://localhost:5174
 ```powershell
 # Check all containers
 docker ps
 
 # Test backend
-curl http://localhost:5000/api/health
-# Or open: http://localhost:5000/swagger
+curl http://localhost:5059/api/health
+# Or open: http://localhost:5059/swagger
 
 # Test frontend
-# Open browser: http://localhost:3000
+# Open browser: http://localhost:5174
 ```
 
 ## Environment Files
@@ -182,7 +179,7 @@ curl http://localhost:5000/api/health
   },
   "AllowedHosts": "*",
   "Cors": {
-    "AllowedOrigins": ["http://localhost:3000", "http://localhost:5173"]
+    "AllowedOrigins": ["http://localhost:5174"]
   }
 }
 ```
@@ -191,7 +188,7 @@ curl http://localhost:5000/api/health
 
 ### Frontend: .env.local
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5059/api
 VITE_APP_NAME=Lawgate
 VITE_APP_VERSION=1.0.0
 ```
@@ -284,8 +281,8 @@ dotnet ef migrations remove
 
 ### Port Already in Use
 ```powershell
-# Find process using port 5000
-netstat -ano | findstr :5000
+# Find process using port 5059
+netstat -ano | findstr :5059
 
 # Kill process
 taskkill /PID <process-id> /F

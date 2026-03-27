@@ -25,17 +25,18 @@ Host=postgres;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_pas
 
 ### Technology Stack Updates
 
-- **Backend**: Upgraded to **.NET 10** (from .NET 8)
-- **Frontend**: Node.js 20 with Vite + React + TypeScript
+- **Backend**: **.NET 10** (dotnet/sdk:10.0)
+- **Frontend**: Node.js 24 with Vite + React 19 + TypeScript
 - **Database**: PostgreSQL 16 Alpine
 - **Container Orchestration**: Docker Compose
 
 ### Docker Configuration
 
 #### Services Available:
-1. **postgres** - PostgreSQL 16 database (Currently Running)
-2. **backend** - .NET 10 Web API (Ready to start after initialization)
-3. **frontend** - React + Vite dev server (Ready to start after initialization)
+1. **postgres** — PostgreSQL 16 Alpine (port 5432)
+2. **azurite** — Azure Storage emulator for local blob storage (ports 10000-10002)
+3. **backend** — .NET 10 Web API (port 5059)
+4. **frontend** — React 19 + Vite dev server (port 5174)
 
 #### Docker Compose Features:
 - ✅ Automatic restart (`restart: unless-stopped`)
