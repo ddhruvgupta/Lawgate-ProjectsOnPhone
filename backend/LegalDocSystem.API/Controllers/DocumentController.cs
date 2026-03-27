@@ -72,6 +72,7 @@ public class DocumentController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "CompanyOwner,Admin")]
     public async Task<IActionResult> DeleteDocument(int id)
     {
         var userId = int.Parse(User.FindFirst(ClaimTypes.NameIdentifier)?.Value ?? "0");

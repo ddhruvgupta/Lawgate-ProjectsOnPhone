@@ -22,6 +22,7 @@ public class AuditController : ControllerBase
     /// Supports filtering by entityType and entityId, with pagination.
     /// </summary>
     [HttpGet]
+    [Authorize(Roles = "CompanyOwner,Admin")]
     public async Task<ActionResult<object>> GetLogs(
         [FromQuery] string? entityType = null,
         [FromQuery] int? entityId = null,

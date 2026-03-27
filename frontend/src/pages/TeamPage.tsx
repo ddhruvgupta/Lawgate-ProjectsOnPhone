@@ -7,6 +7,7 @@ import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { apiService } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import type { CreateTeamMemberRequest } from '../types';
 import { PlusIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
@@ -45,6 +46,7 @@ export const TeamPage: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const { showToast } = useToast();
   const { user: currentUser } = useAuth();
+  const { canManageTeam } = usePermissions();
   const queryClient = useQueryClient();
 
   const { data: members = [], isLoading } = useQuery({
@@ -99,13 +101,15 @@ export const TeamPage: React.FC = () => {
             {members.length} member{members.length !== 1 ? 's' : ''} &middot; {activeCount} active
           </p>
         </div>
-        <button
-          onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-        >
-          <PlusIcon className="w-4 h-4" />
-          Add Member
-        </button>
+        {canManageTeam && (
+          <button
+            onClick={() => setModalOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <PlusIcon className="w-4 h-4" />
+            Add Member
+          </button>
+        )}
       </div>
 
       {/* Table */}
@@ -157,7 +161,7 @@ export const TeamPage: React.FC = () => {
                     </span>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    {member.id !== currentUser?.id && member.role !== 'CompanyOwner' && (
+                    {canManageTeam && member.id !== currentUser?.id && member.role !== 'CompanyOwner' && (
                       <button
                         onClick={() => toggleMutation.mutate(member.id)}
                         disabled={toggleMutation.isPending}

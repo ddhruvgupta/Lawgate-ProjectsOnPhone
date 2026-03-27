@@ -47,6 +47,7 @@ public class UserController : ControllerBase
     }
 
     [HttpPost]
+    [Authorize(Roles = "CompanyOwner,Admin")]
     public async Task<ActionResult<UserDto>> CreateUser(CreateUserDto dto)
     {
         var companyIdClaim = User.FindFirst("CompanyId");
@@ -68,6 +69,7 @@ public class UserController : ControllerBase
     }
 
     [HttpPost("{id}/toggle-status")]
+    [Authorize(Roles = "CompanyOwner,Admin")]
     public async Task<ActionResult<UserDto>> ToggleUserStatus(int id)
     {
         var companyIdClaim = User.FindFirst("CompanyId");

@@ -9,7 +9,8 @@ export interface User {
   isActive: boolean;
 }
 
-export type UserRole = 'SystemAdmin' | 'CompanyAdmin' | 'CompanyUser' | 'ExternalUser';
+/** Must match backend LegalDocSystem.Domain.Enums.UserRole */
+export type UserRole = 'CompanyOwner' | 'Admin' | 'User' | 'Viewer';
 
 export interface LoginRequest {
   email: string;

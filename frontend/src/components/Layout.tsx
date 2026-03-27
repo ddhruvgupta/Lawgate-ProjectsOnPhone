@@ -1,6 +1,7 @@
 import React, { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { cn } from '../utils/cn';
 
 interface NavItem {
@@ -63,6 +64,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { canAccessTeam, canAccessActivity } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -83,7 +85,14 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
           {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
+            // Role-gate Team and Activity items
+            if (item.href === '/team' && !canAccessTeam) return null;
+            if (item.href === '/activity' && !canAccessActivity) return null;
+
+            const isActive =
+              location.pathname === item.href ||
+              (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
+
             return (
               <Link
                 key={item.href}

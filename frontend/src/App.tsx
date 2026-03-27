@@ -12,6 +12,7 @@ import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
 import { TeamPage } from './pages/TeamPage';
 import { ActivityPage } from './pages/ActivityPage';
+import { RoleGuard } from './components/RoleGuard';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -43,8 +44,16 @@ function App() {
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/projects" element={<ProjectsPage />} />
                         <Route path="/projects/:id" element={<ProjectDetailPage />} />
-                        <Route path="/team" element={<TeamPage />} />
-                        <Route path="/activity" element={<ActivityPage />} />
+                        <Route path="/team" element={
+                          <RoleGuard allowedRoles={['CompanyOwner', 'Admin']}>
+                            <TeamPage />
+                          </RoleGuard>
+                        } />
+                        <Route path="/activity" element={
+                          <RoleGuard allowedRoles={['CompanyOwner', 'Admin']}>
+                            <ActivityPage />
+                          </RoleGuard>
+                        } />
                         <Route path="/" element={<Navigate to="/dashboard" replace />} />
                         <Route path="*" element={<Navigate to="/dashboard" replace />} />
                       </Routes>

@@ -87,6 +87,7 @@ public class ProjectController : ControllerBase
     }
 
     [HttpDelete("{id}")]
+    [Authorize(Roles = "CompanyOwner,Admin")]
     public async Task<IActionResult> DeleteProject(int id)
     {
         var companyIdClaim = User.FindFirst("CompanyId");

@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
 import { apiService } from '../services/api';
 import { useToast } from '../contexts/ToastContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { ProjectStatusBadge } from '../components/ProjectStatusBadge';
 import { formatDate, formatBytes } from '../utils/formatters';
 import type { UpdateProjectRequest } from '../types';
@@ -38,6 +39,7 @@ export const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { canEditProject, canDeleteProject } = usePermissions();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -203,18 +205,22 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={openEdit}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
-            >
-              <PencilIcon className="w-3.5 h-3.5" /> Edit
-            </button>
-            <button
-              onClick={() => setDeleteOpen(true)}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50"
-            >
-              <TrashIcon className="w-3.5 h-3.5" /> Delete
-            </button>
+            {canEditProject && (
+              <button
+                onClick={openEdit}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+              >
+                <PencilIcon className="w-3.5 h-3.5" /> Edit
+              </button>
+            )}
+            {canDeleteProject && (
+              <button
+                onClick={() => setDeleteOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-red-600 bg-white border border-red-200 rounded-lg hover:bg-red-50"
+              >
+                <TrashIcon className="w-3.5 h-3.5" /> Delete
+              </button>
+            )}
           </div>
         </div>
       </div>
