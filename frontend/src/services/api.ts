@@ -1,5 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse } from '../types/auth';
+import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5059/api';
 
@@ -9,29 +10,22 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
     });
 
-    // Add request interceptor to include auth token
     this.api.interceptors.request.use(
       (config) => {
         const token = localStorage.getItem('token');
-        if (token) {
-          config.headers.Authorization = `Bearer ${token}`;
-        }
+        if (token) config.headers.Authorization = `Bearer ${token}`;
         return config;
       },
       (error) => Promise.reject(error)
     );
 
-    // Add response interceptor to handle errors
     this.api.interceptors.response.use(
       (response) => response,
       (error: AxiosError<ApiResponse<never>>) => {
         if (error.response?.status === 401) {
-          // Token expired or invalid
           localStorage.removeItem('token');
           localStorage.removeItem('user');
           window.location.href = '/login';
@@ -41,7 +35,8 @@ class ApiService {
     );
   }
 
-  // Authentication
+  // ─── Auth ──────────────────────────────────────────────────────────────────
+
   async login(credentials: LoginRequest): Promise<ApiResponse<TokenResponse>> {
     const response = await this.api.post<ApiResponse<TokenResponse>>('/auth/login', credentials);
     return response.data;
@@ -52,35 +47,98 @@ class ApiService {
     return response.data;
   }
 
-  async validateToken(token: string): Promise<ApiResponse<{ isValid: boolean; userId: number }>> {
-    const response = await this.api.post<ApiResponse<{ isValid: boolean; userId: number }>>('/auth/validate', { token });
-    return response.data;
-  }
-
   async getCurrentUser(): Promise<ApiResponse<any>> {
     const response = await this.api.get<ApiResponse<any>>('/auth/me');
     return response.data;
   }
 
-  // Generic API methods
-  async get<T>(url: string): Promise<ApiResponse<T>> {
-    const response = await this.api.get<ApiResponse<T>>(url);
+  // ─── Projects ──────────────────────────────────────────────────────────────
+
+  async getProjects(): Promise<Project[]> {
+    const response = await this.api.get<Project[]>('/projects');
     return response.data;
   }
 
-  async post<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await this.api.post<ApiResponse<T>>(url, data);
+  async getProject(id: number): Promise<Project> {
+    const response = await this.api.get<Project>(`/projects/${id}`);
     return response.data;
   }
 
-  async put<T>(url: string, data?: any): Promise<ApiResponse<T>> {
-    const response = await this.api.put<ApiResponse<T>>(url, data);
+  async createProject(data: CreateProjectRequest): Promise<Project> {
+    const response = await this.api.post<Project>('/projects', data);
     return response.data;
   }
 
-  async delete<T>(url: string): Promise<ApiResponse<T>> {
-    const response = await this.api.delete<ApiResponse<T>>(url);
+  async updateProject(id: number, data: UpdateProjectRequest): Promise<Project> {
+    const response = await this.api.put<Project>(`/projects/${id}`, data);
     return response.data;
+  }
+
+  async deleteProject(id: number): Promise<void> {
+    await this.api.delete(`/projects/${id}`);
+  }
+
+  // ─── Documents ─────────────────────────────────────────────────────────────
+
+  async getProjectDocuments(projectId: number): Promise<Document[]> {
+    const response = await this.api.get<Document[]>(`/documents/project/${projectId}`);
+    return response.data;
+  }
+
+  async getDocument(id: number): Promise<Document> {
+    const response = await this.api.get<Document>(`/documents/${id}`);
+    return response.data;
+  }
+
+  async getDownloadUrl(id: number): Promise<string> {
+    const response = await this.api.get<{ downloadUrl: string }>(`/documents/${id}/download-url`);
+    return response.data.downloadUrl;
+  }
+
+  async deleteDocument(id: number): Promise<void> {
+    await this.api.delete(`/documents/${id}`);
+  }
+
+  // ─── Team / Users ──────────────────────────────────────────────────────────
+
+  async getTeamMembers(): Promise<TeamMember[]> {
+    const response = await this.api.get<TeamMember[]>('/users');
+    return response.data;
+  }
+
+  async createTeamMember(data: CreateTeamMemberRequest): Promise<TeamMember> {
+    const response = await this.api.post<TeamMember>('/users', data);
+    return response.data;
+  }
+
+  async toggleUserStatus(id: number): Promise<TeamMember> {
+    const response = await this.api.post<TeamMember>(`/users/${id}/toggle-status`);
+    return response.data;
+  }
+
+  // ─── Audit Logs ────────────────────────────────────────────────────────────
+
+  async getAuditLogs(params?: {
+    entityType?: string;
+    entityId?: number;
+    page?: number;
+    pageSize?: number;
+  }): Promise<AuditLogsResponse> {
+    const response = await this.api.get<AuditLogsResponse>('/audit', { params });
+    return response.data;
+  }
+  // ── Platform Admin ────────────────────────────────────────────────────────
+
+  getPlatformCompanies(): Promise<CompanyOverview[]> {
+    return this.api.get('/admin/companies').then((r) => r.data);
+  }
+
+  getPlatformCompany(id: number): Promise<CompanyDetail> {
+    return this.api.get(`/admin/companies/${id}`).then((r) => r.data);
+  }
+
+  getPlatformCompanyDocuments(id: number): Promise<CompanyDocument[]> {
+    return this.api.get(`/admin/companies/${id}/documents`).then((r) => r.data);
   }
 }
 

@@ -1,6 +1,7 @@
 import React, { type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
 import { cn } from '../utils/cn';
 
 interface NavItem {
@@ -46,6 +47,15 @@ const navItems: NavItem[] = [
       </svg>
     ),
   },
+  {
+    label: 'Activity',
+    href: '/activity',
+    icon: (
+      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+      </svg>
+    ),
+  },
 ];
 
 interface LayoutProps {
@@ -54,6 +64,7 @@ interface LayoutProps {
 
 export const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
+  const { canAccessTeam, canAccessActivity, canAccessPlatformAdmin } = usePermissions();
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -73,24 +84,54 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Navigation */}
         <nav className="flex-1 px-3 py-4 space-y-1">
-          {navItems.map((item) => {
-            const isActive = location.pathname === item.href;
-            return (
+          {canAccessPlatformAdmin ? (
+            /* Platform admin nav */
+            <>
+              <p className="px-3 pt-1 pb-2 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+                Lawgate Admin
+              </p>
               <Link
-                key={item.href}
-                to={item.href}
+                to="/admin"
                 className={cn(
                   'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-blue-50 text-blue-700'
+                  location.pathname.startsWith('/admin')
+                    ? 'bg-indigo-50 text-indigo-700'
                     : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                 )}
               >
-                {item.icon}
-                {item.label}
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                All Customers
               </Link>
-            );
-          })}
+            </>
+          ) : (
+            /* Regular user nav */
+            navItems.map((item) => {
+              if (item.href === '/team' && !canAccessTeam) return null;
+              if (item.href === '/activity' && !canAccessActivity) return null;
+
+              const isActive =
+                location.pathname === item.href ||
+                (item.href !== '/dashboard' && location.pathname.startsWith(item.href));
+
+              return (
+                <Link
+                  key={item.href}
+                  to={item.href}
+                  className={cn(
+                    'flex items-center gap-3 px-3 py-2 rounded-md text-sm font-medium transition-colors',
+                    isActive
+                      ? 'bg-blue-50 text-blue-700'
+                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                  )}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              );
+            })
+          )}
         </nav>
 
         {/* User section */}

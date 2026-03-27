@@ -20,5 +20,15 @@ public enum UserRole
     /// <summary>
     /// Read-only access
     /// </summary>
-    Viewer = 4
+    Viewer = 4,
+
+    /// <summary>
+    /// Lawgate platform administrator — can view all customers, their users and projects, but not documents
+    /// </summary>
+    PlatformAdmin = 5,
+
+    /// <summary>
+    /// Lawgate super administrator — full visibility including customer documents
+    /// </summary>
+    PlatformSuperAdmin = 6
 }

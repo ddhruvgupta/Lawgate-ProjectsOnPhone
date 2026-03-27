@@ -22,5 +22,5 @@ public class CreateProjectDto
     public DateTime? EndDate { get; set; }
     public string? Tags { get; set; }
     
-    public ProjectStatus Status { get; set; } = ProjectStatus.Planning;
+    public ProjectStatus Status { get; set; } = ProjectStatus.Intake;
 }

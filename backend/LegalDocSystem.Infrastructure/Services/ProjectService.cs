@@ -49,7 +49,7 @@ public class ProjectService : IProjectService
         return MapToDto(project);
     }
 
-    public async Task<ProjectDto> CreateProjectAsync(int companyId, CreateProjectDto dto)
+    public async Task<ProjectDto> CreateProjectAsync(int companyId, CreateProjectDto dto, string createdBy)
     {
         var project = new Project
         {
@@ -63,7 +63,7 @@ public class ProjectService : IProjectService
             EndDate = dto.EndDate,
             Tags = dto.Tags,
             CreatedAt = DateTime.UtcNow,
-            CreatedBy = "System" // Or current user from context if passed
+            CreatedBy = createdBy
         };
 
         _context.Projects.Add(project);
@@ -72,7 +72,7 @@ public class ProjectService : IProjectService
         return MapToDto(project);
     }
 
-    public async Task<ProjectDto> UpdateProjectAsync(int id, int companyId, UpdateProjectDto dto)
+    public async Task<ProjectDto> UpdateProjectAsync(int id, int companyId, UpdateProjectDto dto, string updatedBy)
     {
         var project = await _context.Projects
             .FirstOrDefaultAsync(p => p.Id == id && p.CompanyId == companyId);
@@ -88,6 +88,7 @@ public class ProjectService : IProjectService
         project.EndDate = dto.EndDate;
         project.Tags = dto.Tags;
         project.UpdatedAt = DateTime.UtcNow;
+        project.UpdatedBy = updatedBy;
 
         await _context.SaveChangesAsync();
 
