@@ -23,7 +23,11 @@ export function ToastContainer() {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-80">
+    <div
+      aria-live="polite"
+      aria-label="Notifications"
+      className="fixed bottom-4 right-4 z-50 flex flex-col gap-2 w-80"
+    >
       {toasts.map((toast) => (
         <div
           key={toast.id}
@@ -36,6 +40,7 @@ export function ToastContainer() {
           <p className="flex-1 text-sm text-gray-800">{toast.message}</p>
           <button
             onClick={() => dismissToast(toast.id)}
+            aria-label="Dismiss notification"
             className="flex-shrink-0 text-gray-400 hover:text-gray-600"
           >
             <XMarkIcon className="w-4 h-4" />

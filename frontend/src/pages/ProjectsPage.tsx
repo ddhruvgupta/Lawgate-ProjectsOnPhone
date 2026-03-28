@@ -57,7 +57,7 @@ export const ProjectsPage: React.FC = () => {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema) as any });
 
   const onSubmit = (values: FormValues) => {
     const payload: CreateProjectRequest = {

@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { apiService } from '../services/api';
 import { formatDate } from '../utils/formatters';
 import { ProjectStatusBadge } from '../components/ProjectStatusBadge';
+import { CardSkeleton } from '../components/LoadingSkeleton';
 import {
   FolderIcon,
   UsersIcon,
@@ -45,32 +46,36 @@ export const DashboardPage: React.FC = () => {
       </div>
 
       {/* Stat cards */}
+      {projectsLoading || teamLoading ? (
+        <CardSkeleton count={4} />
+      ) : (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
         <StatCard
           label="Total Projects"
-          value={projectsLoading ? '…' : String(projects.length)}
+          value={String(projects.length)}
           icon={<FolderIcon className="w-6 h-6 text-blue-600" />}
           bg="bg-blue-50"
         />
         <StatCard
           label="Active Projects"
-          value={projectsLoading ? '…' : String(activeProjects.length)}
+          value={String(activeProjects.length)}
           icon={<CheckCircleIcon className="w-6 h-6 text-green-600" />}
           bg="bg-green-50"
         />
         <StatCard
           label="Total Documents"
-          value={projectsLoading ? '…' : String(totalDocuments)}
+          value={String(totalDocuments)}
           icon={<DocumentIcon className="w-6 h-6 text-purple-600" />}
           bg="bg-purple-50"
         />
         <StatCard
           label="Team Members"
-          value={teamLoading ? '…' : String(teamMembers.length)}
+          value={String(teamMembers.length)}
           icon={<UsersIcon className="w-6 h-6 text-orange-600" />}
           bg="bg-orange-50"
         />
       </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent projects — 2/3 width */}

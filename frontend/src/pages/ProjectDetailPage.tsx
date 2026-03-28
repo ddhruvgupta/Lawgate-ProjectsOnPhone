@@ -93,7 +93,7 @@ export const ProjectDetailPage: React.FC = () => {
     handleSubmit,
     reset,
     formState: { errors },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) });
+  } = useForm<FormValues>({ resolver: zodResolver(schema) as any });
 
   const openEdit = () => {
     if (project) {
@@ -349,7 +349,7 @@ export const ProjectDetailPage: React.FC = () => {
                 <button type="button" onClick={() => setEditOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">
                   Cancel
                 </button>
-                <button type="button" onClick={handleSubmit((v) => updateMutation.mutate({ ...v, clientName: v.clientName || undefined, caseNumber: v.caseNumber || undefined, startDate: v.startDate || undefined, endDate: v.endDate || undefined } as UpdateProjectRequest))} disabled={updateMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                <button type="button" onClick={handleSubmit((v) => updateMutation.mutate({ ...v, clientName: v.clientName || undefined, caseNumber: v.caseNumber || undefined, startDate: v.startDate || undefined, endDate: v.endDate || undefined } as unknown as UpdateProjectRequest))} disabled={updateMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
                   {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
                 </button>
               </div>

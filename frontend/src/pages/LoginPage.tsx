@@ -38,7 +38,7 @@ export const LoginPage: React.FC = () => {
         </div>
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
+            <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
               {error}
             </div>
           )}
@@ -94,6 +94,9 @@ export const LoginPage: React.FC = () => {
                 Register here
               </Link>
             </div>
+            <Link to="/forgot-password" className="font-medium text-primary-600 hover:text-primary-500">
+              Forgot password?
+            </Link>
           </div>
         </form>
       </div>

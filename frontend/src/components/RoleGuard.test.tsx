@@ -4,7 +4,7 @@ import React from 'react'
 import type { User, AuthContextType } from '../types/auth'
 import { MemoryRouter } from 'react-router-dom'
 
-const mockUseAuth = vi.fn<[], AuthContextType>()
+const mockUseAuth = vi.fn<() => AuthContextType>()
 
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
@@ -19,6 +19,8 @@ function makeAuthContext(user: User | null): AuthContextType {
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
+    forgotPassword: vi.fn(),
+    resetPassword: vi.fn(),
     isAuthenticated: user !== null,
     isLoading: false,
   }

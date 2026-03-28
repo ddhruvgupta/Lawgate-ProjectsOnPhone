@@ -28,6 +28,7 @@ export interface RegisterRequest {
 
 export interface TokenResponse {
   token: string;
+  refreshToken: string;
   expiresAt: string;
   user: User;
 }
@@ -45,6 +46,8 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string, confirmPassword: string) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }

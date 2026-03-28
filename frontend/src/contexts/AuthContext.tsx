@@ -24,12 +24,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const login = async (email: string, password: string) => {
     try {
       const response = await apiService.login({ email, password });
-      
+
       if (response.success && response.data) {
-        const { token: newToken, user: newUser } = response.data;
+        const { token: newToken, refreshToken, user: newUser } = response.data;
         setToken(newToken);
         setUser(newUser);
         localStorage.setItem('token', newToken);
+        localStorage.setItem('refreshToken', refreshToken);
         localStorage.setItem('user', JSON.stringify(newUser));
       } else {
         throw new Error(response.message || 'Login failed');
@@ -43,12 +44,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const register = async (data: RegisterRequest) => {
     try {
       const response = await apiService.register(data);
-      
+
       if (response.success && response.data) {
-        const { token: newToken, user: newUser } = response.data;
+        const { token: newToken, refreshToken, user: newUser } = response.data;
         setToken(newToken);
         setUser(newUser);
         localStorage.setItem('token', newToken);
+        localStorage.setItem('refreshToken', refreshToken);
         localStorage.setItem('user', JSON.stringify(newUser));
       } else {
         throw new Error(response.message || 'Registration failed');
@@ -63,7 +65,19 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(null);
     setUser(null);
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
+  };
+
+  const forgotPassword = async (email: string) => {
+    await apiService.forgotPassword(email);
+  };
+
+  const resetPassword = async (resetToken: string, newPassword: string, confirmPassword: string) => {
+    const response = await apiService.resetPassword(resetToken, newPassword, confirmPassword);
+    if (!response.success) {
+      throw new Error(response.message || 'Password reset failed');
+    }
   };
 
   const value: AuthContextType = {
@@ -72,6 +86,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     login,
     register,
     logout,
+    forgotPassword,
+    resetPassword,
     isAuthenticated: !!token && !!user,
     isLoading,
   };

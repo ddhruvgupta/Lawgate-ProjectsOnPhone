@@ -6,6 +6,8 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5059/api'
 
 class ApiService {
   private api: AxiosInstance;
+  private isRefreshing = false;
+  private pendingRequests: Array<(token: string | null) => void> = [];
 
   constructor() {
     this.api = axios.create({
@@ -24,15 +26,66 @@ class ApiService {
 
     this.api.interceptors.response.use(
       (response) => response,
-      (error: AxiosError<ApiResponse<never>>) => {
-        if (error.response?.status === 401) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
-          window.location.href = '/login';
+      async (error: AxiosError<ApiResponse<never>>) => {
+        const originalRequest = error.config as typeof error.config & { _retry?: boolean };
+
+        if (error.response?.status === 401 && !originalRequest._retry) {
+          const storedRefreshToken = localStorage.getItem('refreshToken');
+
+          if (!storedRefreshToken) {
+            this._clearAuthAndRedirect();
+            return Promise.reject(error);
+          }
+
+          if (this.isRefreshing) {
+            // Queue this request until the refresh completes
+            return new Promise((resolve, reject) => {
+              this.pendingRequests.push((newToken) => {
+                if (!newToken) return reject(error);
+                originalRequest.headers!['Authorization'] = `Bearer ${newToken}`;
+                resolve(this.api(originalRequest));
+              });
+            });
+          }
+
+          originalRequest._retry = true;
+          this.isRefreshing = true;
+
+          try {
+            const response = await this.refreshTokens(storedRefreshToken);
+            if (response.success && response.data) {
+              const { token, refreshToken } = response.data;
+              localStorage.setItem('token', token);
+              localStorage.setItem('refreshToken', refreshToken);
+              this.api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+              this.pendingRequests.forEach((cb) => cb(token));
+              this.pendingRequests = [];
+              originalRequest.headers!['Authorization'] = `Bearer ${token}`;
+              return this.api(originalRequest);
+            } else {
+              this._clearAuthAndRedirect();
+              return Promise.reject(error);
+            }
+          } catch {
+            this.pendingRequests.forEach((cb) => cb(null));
+            this.pendingRequests = [];
+            this._clearAuthAndRedirect();
+            return Promise.reject(error);
+          } finally {
+            this.isRefreshing = false;
+          }
         }
+
         return Promise.reject(error);
       }
     );
+  }
+
+  private _clearAuthAndRedirect() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('user');
+    window.location.href = '/login';
   }
 
   // ─── Auth ──────────────────────────────────────────────────────────────────
@@ -49,6 +102,40 @@ class ApiService {
 
   async getCurrentUser(): Promise<ApiResponse<any>> {
     const response = await this.api.get<ApiResponse<any>>('/auth/me');
+    return response.data;
+  }
+
+  async refreshTokens(refreshToken: string): Promise<ApiResponse<TokenResponse>> {
+    // Use raw axios to avoid the interceptor triggering infinitely
+    const response = await axios.post<ApiResponse<TokenResponse>>(
+      `${API_BASE_URL}/auth/refresh`,
+      { refreshToken },
+      { headers: { 'Content-Type': 'application/json' } }
+    );
+    return response.data;
+  }
+
+  async forgotPassword(email: string): Promise<ApiResponse<null>> {
+    const response = await this.api.post<ApiResponse<null>>('/auth/forgot-password', { email });
+    return response.data;
+  }
+
+  async resetPassword(token: string, newPassword: string, confirmPassword: string): Promise<ApiResponse<null>> {
+    const response = await this.api.post<ApiResponse<null>>('/auth/reset-password', {
+      token,
+      newPassword,
+      confirmPassword,
+    });
+    return response.data;
+  }
+
+  async verifyEmail(token: string): Promise<ApiResponse<null>> {
+    const response = await this.api.post<ApiResponse<null>>('/auth/verify-email', { token });
+    return response.data;
+  }
+
+  async resendVerification(email: string): Promise<ApiResponse<null>> {
+    const response = await this.api.post<ApiResponse<null>>('/auth/resend-verification', { email });
     return response.data;
   }
 
