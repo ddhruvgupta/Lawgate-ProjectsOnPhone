@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LegalDocSystem.API.Controllers;
 
+/// <summary>Query audit logs for actions performed within a company.</summary>
 [ApiController]
 [Route("api/audit")]
 [Authorize]

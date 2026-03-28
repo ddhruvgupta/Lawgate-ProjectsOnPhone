@@ -6,6 +6,7 @@ using System.Security.Claims;
 
 namespace LegalDocSystem.API.Controllers;
 
+/// <summary>Manage the caller's company profile.</summary>
 [ApiController]
 [Route("api/companies")]
 [Authorize]
@@ -18,6 +19,7 @@ public class CompanyController : ControllerBase
         _companyService = companyService;
     }
 
+    /// <summary>Returns the company belonging to the authenticated user.</summary>
     [HttpGet("me")]
     public async Task<ActionResult<CompanyDto>> GetMyCompany()
     {
@@ -31,6 +33,7 @@ public class CompanyController : ControllerBase
         return Ok(company);
     }
 
+    /// <summary>Updates the company profile. Requires CompanyOwner role.</summary>
     [HttpPut("me")]
     public async Task<ActionResult<CompanyDto>> UpdateMyCompany(UpdateCompanyDto dto)
     {

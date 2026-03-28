@@ -7,6 +7,7 @@ using System.Security.Claims;
 
 namespace LegalDocSystem.API.Controllers;
 
+/// <summary>Manage users within a company.</summary>
 [ApiController]
 [Route("api/users")]
 [Authorize]
@@ -21,6 +22,7 @@ public class UserController : ControllerBase
         _auditService = auditService;
     }
 
+    /// <summary>Lists all active users in the caller's company.</summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<UserDto>>> GetUsers()
     {
@@ -32,6 +34,7 @@ public class UserController : ControllerBase
         return Ok(users);
     }
 
+    /// <summary>Returns a single user by ID (must belong to the caller's company).</summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<UserDto>> GetUser(int id)
     {
