@@ -429,6 +429,15 @@ namespace LegalDocSystem.Infrastructure.Migrations
                     b.Property<string>("ProfileImageUrl")
                         .HasColumnType("text");
 
+                    b.Property<string>("EmailVerificationToken")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("EmailVerificationTokenExpiry")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsEmailVerified")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("RefreshToken")
                         .HasColumnType("text");
 

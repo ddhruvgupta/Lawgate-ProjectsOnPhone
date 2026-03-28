@@ -3,11 +3,13 @@ using LegalDocSystem.Application.DTOs.Common;
 using LegalDocSystem.Application.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace LegalDocSystem.API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableRateLimiting("auth")]
 public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
@@ -180,5 +182,74 @@ public class AuthController : ControllerBase
             return StatusCode(500, ApiResponse<object>.ErrorResponse(
                 "An error occurred while retrieving user information"));
         }
+    }
+
+    /// <summary>
+    /// Request a password-reset email
+    /// </summary>
+    [HttpPost("forgot-password")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<object?>>> ForgotPassword([FromBody] ForgotPasswordDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object?>.ErrorResponse("Invalid input",
+                ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()));
+
+        // Always return 200 to prevent email enumeration
+        await _authService.ForgotPasswordAsync(dto.Email);
+        return Ok(ApiResponse<object?>.SuccessResponse(null,
+            "If that email is registered you will receive a password reset link shortly."));
+    }
+
+    /// <summary>
+    /// Reset password using a token from the reset email
+    /// </summary>
+    [HttpPost("reset-password")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<object?>>> ResetPassword([FromBody] ResetPasswordDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object?>.ErrorResponse("Invalid input",
+                ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()));
+
+        var success = await _authService.ResetPasswordAsync(dto.Token, dto.NewPassword);
+        if (!success)
+            return BadRequest(ApiResponse<object?>.ErrorResponse("Invalid or expired reset token."));
+
+        return Ok(ApiResponse<object?>.SuccessResponse(null, "Password reset successful. You can now log in."));
+    }
+
+    /// <summary>
+    /// Verify email with a token from the verification email
+    /// </summary>
+    [HttpPost("verify-email")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<object?>>> VerifyEmail([FromBody] VerifyEmailDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object?>.ErrorResponse("Invalid input",
+                ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()));
+
+        var success = await _authService.VerifyEmailAsync(dto.Token);
+        if (!success)
+            return BadRequest(ApiResponse<object?>.ErrorResponse("Invalid or expired verification token."));
+
+        return Ok(ApiResponse<object?>.SuccessResponse(null, "Email verified successfully."));
+    }
+
+    /// <summary>
+    /// Resend the email verification link
+    /// </summary>
+    [HttpPost("resend-verification")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApiResponse<object?>>> ResendVerification([FromBody] ResendVerificationDto dto)
+    {
+        if (!ModelState.IsValid)
+            return BadRequest(ApiResponse<object?>.ErrorResponse("Invalid input",
+                ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage).ToList()));
+
+        await _authService.ResendVerificationEmailAsync(dto.Email);
+        return Ok(ApiResponse<object?>.SuccessResponse(null,
+            "If that email is registered and unverified, a new verification link has been sent."));
     }
 }

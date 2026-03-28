@@ -14,25 +14,41 @@ public class AuthService : IAuthService
 {
     private readonly ApplicationDbContext _context;
     private readonly IJwtTokenService _jwtTokenService;
+    private readonly IEmailService _emailService;
     private readonly ILogger<AuthService> _logger;
     private readonly int _jwtExpiryMinutes;
+    private readonly string _frontendBaseUrl;
 
     public AuthService(
         ApplicationDbContext context,
         IJwtTokenService jwtTokenService,
+        IEmailService emailService,
         IConfiguration configuration,
         ILogger<AuthService> logger)
     {
         _context = context;
         _jwtTokenService = jwtTokenService;
+        _emailService = emailService;
         _logger = logger;
         _jwtExpiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"] ?? "1440");
+        _frontendBaseUrl = configuration["App:FrontendBaseUrl"] ?? "http://localhost:5173";
     }
 
-    private static string HashRefreshToken(string token)
+    private static string HashToken(string token)
     {
         var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
         return Convert.ToBase64String(bytes);
+    }
+
+    // Keep backward-compat alias used by refresh token logic
+    private static string HashRefreshToken(string token) => HashToken(token);
+
+    private static string GenerateSecureToken()
+    {
+        var bytes = new byte[32];
+        RandomNumberGenerator.Fill(bytes);
+        return Convert.ToBase64String(bytes)
+            .Replace('+', '-').Replace('/', '_').Replace("=", ""); // URL-safe
     }
 
     public async Task<TokenResponseDto> RegisterAsync(RegisterDto registerDto)
@@ -95,6 +111,7 @@ public class AuthService : IAuthService
                 Phone = registerDto.Phone,
                 Role = UserRole.CompanyOwner,
                 IsActive = true,
+                IsEmailVerified = false,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "System"
             };
@@ -104,6 +121,11 @@ public class AuthService : IAuthService
 
             _logger.LogInformation("New company registered: {CompanyName} with owner: {Email}",
                 company.Name, user.Email);
+
+            // Generate email verification token
+            var rawVerificationToken = GenerateSecureToken();
+            user.EmailVerificationToken = HashToken(rawVerificationToken);
+            user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
 
             // Generate tokens
             var token = _jwtTokenService.GenerateToken(
@@ -118,6 +140,17 @@ public class AuthService : IAuthService
             user.RefreshToken = HashRefreshToken(refreshToken);
             user.RefreshTokenExpiry = refreshTokenExpiry;
             await _context.SaveChangesAsync();
+
+            // Send verification email (non-blocking — failure should not abort registration)
+            try
+            {
+                var verificationLink = $"{_frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(rawVerificationToken)}";
+                await _emailService.SendEmailVerificationAsync(user.Email, user.FirstName, verificationLink);
+            }
+            catch (Exception emailEx)
+            {
+                _logger.LogError(emailEx, "Failed to send verification email to {Email}", user.Email);
+            }
 
             return new TokenResponseDto
             {
@@ -281,5 +314,102 @@ public class AuthService : IAuthService
     public async Task<bool> ValidateTokenAsync(string token)
     {
         return await Task.FromResult(_jwtTokenService.ValidateToken(token));
+    }
+
+    public async Task ForgotPasswordAsync(string email)
+    {
+        // Always return success to prevent email enumeration attacks
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null || !user.IsActive)
+        {
+            _logger.LogInformation("ForgotPassword requested for unknown/inactive email: {Email}", email);
+            return;
+        }
+
+        var rawToken = GenerateSecureToken();
+        user.ResetToken = HashToken(rawToken);
+        user.ResetTokenExpiry = DateTime.UtcNow.AddHours(1);
+        await _context.SaveChangesAsync();
+
+        try
+        {
+            var resetLink = $"{_frontendBaseUrl}/reset-password?token={Uri.EscapeDataString(rawToken)}";
+            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FirstName, resetLink);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send password reset email to {Email}", email);
+        }
+    }
+
+    public async Task<bool> ResetPasswordAsync(string token, string newPassword)
+    {
+        var tokenHash = HashToken(token);
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.ResetToken == tokenHash);
+
+        if (user == null || user.ResetTokenExpiry == null || user.ResetTokenExpiry < DateTime.UtcNow)
+        {
+            _logger.LogWarning("Invalid or expired password reset token");
+            return false;
+        }
+
+        user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(newPassword);
+        user.ResetToken = null;
+        user.ResetTokenExpiry = null;
+        // Invalidate all existing refresh tokens on password reset
+        user.RefreshToken = null;
+        user.RefreshTokenExpiry = null;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Password reset successful for user: {Email}", user.Email);
+        return true;
+    }
+
+    public async Task<bool> VerifyEmailAsync(string token)
+    {
+        var tokenHash = HashToken(token);
+
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.EmailVerificationToken == tokenHash);
+
+        if (user == null || user.EmailVerificationTokenExpiry == null
+            || user.EmailVerificationTokenExpiry < DateTime.UtcNow)
+        {
+            _logger.LogWarning("Invalid or expired email verification token");
+            return false;
+        }
+
+        user.IsEmailVerified = true;
+        user.EmailVerificationToken = null;
+        user.EmailVerificationTokenExpiry = null;
+        await _context.SaveChangesAsync();
+
+        _logger.LogInformation("Email verified for user: {Email}", user.Email);
+        return true;
+    }
+
+    public async Task ResendVerificationEmailAsync(string email)
+    {
+        // Always succeed silently to prevent email enumeration
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == email);
+        if (user == null || !user.IsActive || user.IsEmailVerified)
+            return;
+
+        var rawToken = GenerateSecureToken();
+        user.EmailVerificationToken = HashToken(rawToken);
+        user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
+        await _context.SaveChangesAsync();
+
+        try
+        {
+            var verificationLink = $"{_frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(rawToken)}";
+            await _emailService.SendEmailVerificationAsync(user.Email, user.FirstName, verificationLink);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to resend verification email to {Email}", email);
+        }
     }
 }
