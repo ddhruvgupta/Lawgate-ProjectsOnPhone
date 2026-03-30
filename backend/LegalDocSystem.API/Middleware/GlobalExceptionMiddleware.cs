@@ -28,11 +28,14 @@ public class GlobalExceptionMiddleware
         }
     }
 
-    private static Task HandleExceptionAsync(HttpContext context, Exception exception)
+    private Task HandleExceptionAsync(HttpContext context, Exception exception)
     {
         if (context.Response.HasStarted)
+        {
+            _logger.LogWarning("Response already started — cannot write error response for: {ExType}", exception.GetType().Name);
             return Task.CompletedTask;
-
+        }
+        
         var (statusCode, message) = exception switch
         {
             KeyNotFoundException => (HttpStatusCode.NotFound, exception.Message),

@@ -30,6 +30,7 @@ obj/
 .env.development.local
 .env.test.local
 .env.production.local
+.claude/
 appsettings.Development.json
 appsettings.Production.json
 
@@ -81,6 +82,3 @@ frontend/.vite/
 .env.development.local
 .env.test.local
 .env.production.local
-
-# Claude Code local settings (machine-specific)
-.claude/settings.local.json

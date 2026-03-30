@@ -1,109 +1,108 @@
-# Lawgate — Legal Document Management System
+# Lawgate
 
-A multi-tenant SaaS application for Indian law firms to manage legal cases, contracts, and documents.  
-Built with React, .NET Clean Architecture, PostgreSQL, and Azure.
+A multi-tenant SaaS application for law firms to manage legal cases, contracts, and documents. Built for Indian law firms with a focus on data isolation, audit compliance, and Azure deployment.
 
 ---
 
-## 🚦 Current Status — March 2026
+## Tech Stack
 
-### ✅ Completed
-| Area | Details |
-|------|---------|
-| **Clean Architecture** | Domain / Application / Infrastructure / API layers |
-| **Authentication** | JWT login & register, BCrypt, refresh-ready |
-| **Core Domain** | Company, User, Project, Document entities + EF Core migrations |
-| **Service Layer** | CompanyService, ProjectService, UserService, DocumentService |
-| **API Controllers** | Auth, Company, Project, User, Document (tenant-scoped) |
-| **Azure Blob Storage** | AzureBlobStorageService with SAS token generation |
-| **Frontend Shell** | React + Vite + Tailwind, Login/Register/Dashboard pages, Auth context |
-| **Database** | PostgreSQL via Docker, schema migrations, recreate script |
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 19, Vite 7, TypeScript, Tailwind CSS v4, React Router v7, React Query, React Hook Form + Zod, Axios |
+| Backend | ASP.NET Core 10, Entity Framework Core 10, JWT Bearer auth, Serilog, Swagger |
+| Database | PostgreSQL 16 |
+| Storage | Azure Blob Storage (Azurite for local dev) |
+| Containerization | Docker Compose |
+| Deployment | Azure App Service + Azure Database for PostgreSQL |
 
-### 🔨 Currently Working On (Phase 4 → 5)
-1. **Install missing frontend packages** — `react-hook-form`, `zod`, `@tanstack/react-query`, `@headlessui/react`, `@heroicons/react`, `clsx`
-2. **`DbSeeder.cs`** — seed default roles and a test `CompanyOwner` account so the app is usable without manual SQL
-3. **Global error-handling middleware** — return clean JSON errors from the API instead of stack traces
-4. **Frontend layout components** — `Navbar`, `Sidebar`, base `Layout` wrapper
-5. **End-to-end integration test** — verify full register → login → dashboard → API call flow works locally
+---
 
-### 📋 Open GitHub Issues
-- **21 open issues** across Phase 1 (MVP) and Phase 2 (advanced features)
-- View them: `gh issue list --state open`
-- Next up on the board: `#8` RBAC, `#18–20` Frontend UI pages
+## Quick Start
+
+**Prerequisites:** Docker Desktop (everything else runs in containers)
+
+```bash
+docker compose up
+```
+
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:5173 |
+| Backend API | http://localhost:5059 |
+| Swagger UI | http://localhost:5059/swagger |
+| Health check | http://localhost:5059/health |
+
+The backend auto-applies EF Core migrations and seeds demo data on first run (development only).
+
+### Default credentials (seeded by DbSeeder)
+
+| Role | Email | Password |
+|------|-------|----------|
+| CompanyOwner | admin@demolawfirm.com | Admin@123 |
+| User | jane.doe@demolawfirm.com | User@123 |
+| PlatformAdmin | admin@lawgate.io | LawgatePlatform@1 |
+| PlatformSuperAdmin | superadmin@lawgate.io | LawgateSuperAdmin@1 |
 
 ---
 
 ## Project Structure
+
 ```
 .
-├── frontend/          # React 19 + Vite + Tailwind CSS + TypeScript
+├── frontend/          # React 19 + Vite + TypeScript
 ├── backend/           # .NET 10 Clean Architecture Web API
-│   ├── LegalDocSystem.API/          # Controllers, middleware
+│   ├── LegalDocSystem.API/          # Controllers, middleware, Program.cs
 │   ├── LegalDocSystem.Application/  # Services, DTOs, interfaces
-│   ├── LegalDocSystem.Domain/       # Entities, enums, value objects
-│   └── LegalDocSystem.Infrastructure/ # EF Core, Azure, background jobs
-├── database/          # PostgreSQL init scripts & recreate tooling
-├── docker/            # Container configs
+│   ├── LegalDocSystem.Domain/       # Entities, enums
+│   └── LegalDocSystem.Infrastructure/ # EF Core, migrations, Azure Blob, background services
+├── database/          # PostgreSQL init scripts and recreate tooling
+├── docker-compose.yml # Full local stack (postgres, azurite, backend, frontend)
 └── docs/              # Project-wide documentation
 ```
 
-## Quick Start
+---
 
-### Prerequisites
-- Node.js 20+ and npm
-- .NET 10 SDK
-- Docker Desktop
+## Feature Status
 
-### Getting Up and Running
-```powershell
-# 1. Start PostgreSQL (via Docker)
-docker-compose up -d postgres
+### Built
+- JWT authentication (register, login, refresh token, validate, /me)
+- Multi-tenant architecture: every entity is scoped to a `CompanyId`
+- Clean Architecture: Domain / Application / Infrastructure / API layers
+- Company, User, Project, Document entities with EF Core migrations
+- CompanyService, UserService, ProjectService, DocumentService
+- Azure Blob Storage integration with SAS token generation (chunked upload support)
+- DocumentCleanupService background job
+- GlobalExceptionMiddleware returning consistent JSON error responses
+- DbSeeder: seeds demo company, owner user, standard user, and a sample project on startup
+- Frontend: Login, Register, Dashboard pages; ProtectedRoute; AuthContext; Layout
+- Frontend utilities: `cn` (clsx wrapper), `formatters`, `useApi` hook
+- Docker Compose stack: PostgreSQL, Azurite, backend, frontend with hot reload
 
-# 2. Backend
-cd backend
-dotnet restore
-dotnet ef database update --project LegalDocSystem.Infrastructure --startup-project LegalDocSystem.API
-dotnet run --project LegalDocSystem.API
-
-# 3. Frontend
-cd ../frontend
-npm install
-npm run dev
-```
-
-### Database Recreation (After a Long Break)
-```powershell
-cd database
-./recreate-database.ps1
-```
-
-### Default Dev Credentials
-After running the recreate script:
-- **Admin**: `admin@lawgate.com` / `Admin@123`
-- **User**: `user@lawgate.com` / `User@123`
+### Not Yet Built
+- Role controller / RBAC enforcement at project level
+- Document upload UI (frontend)
+- Project and user management UI pages
+- Platform admin views
+- Email verification / password reset
+- Full-text search
+- CI/CD pipelines
+- Production Azure deployment
 
 ---
 
-## Technology Stack
-| Layer | Tech |
-|-------|------|
-| Frontend | React 19, Vite, Tailwind CSS v4, TypeScript, React Router v7, Axios |
-| Backend | .NET 10, Entity Framework Core, JWT Auth, Swagger, Serilog |
-| Database | PostgreSQL 16 |
-| Storage | Azure Blob Storage |
-| Deployment | Azure App Service + Azure Database for PostgreSQL |
-| DevOps | Docker Compose, GitHub Actions (planned) |
-
 ## Documentation
-- [Frontend Docs](./frontend/docs/)
-- [Backend Docs](./backend/docs/)
-- [Database Docs](./database/docs/)
-- [Azure Deployment Guide](./docs/azure-deployment.md)
-- [Implementation Checklist](./IMPLEMENTATION-CHECKLIST.md)
 
-## Environment Variables
-- Copy `frontend/.env.local` from `.env.example` — set `VITE_API_URL`
-- Configure `backend/appsettings.Development.json` — connection string + JWT key + Azure Blob
+| Doc | Contents |
+|-----|----------|
+| [docs/architecture.md](./docs/architecture.md) | System design, layers, data model, entity relationships |
+| [docs/api.md](./docs/api.md) | All API endpoints, request/response shapes, auth |
+| [docs/development.md](./docs/development.md) | Local dev setup, Docker, env vars, migrations |
+| [docs/testing.md](./docs/testing.md) | Test structure, how to run tests, what's covered |
+| [docs/deployment.md](./docs/deployment.md) | Azure deployment, production Dockerfile, CI/CD |
+| [docs/admin.md](./docs/admin.md) | Platform admin system and roles |
+
+---
 
 ## License
+
 Proprietary — All rights reserved
