@@ -68,22 +68,24 @@ builder.Services.AddScoped<IPlatformAdminService, PlatformAdminService>();
 builder.Services.AddHostedService<DocumentCleanupService>();
 
 // Rate Limiting — auth endpoints: 10 req/min; global: 100 req/min
+// Disabled in Testing environment to avoid 429s in integration tests
+var isTesting = builder.Environment.IsEnvironment("Testing");
 builder.Services.AddRateLimiter(options =>
 {
     options.AddFixedWindowLimiter("auth", limiterOptions =>
     {
-        limiterOptions.PermitLimit = 10;
+        limiterOptions.PermitLimit = isTesting ? int.MaxValue : 10;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 0;
+        limiterOptions.QueueLimit = isTesting ? int.MaxValue : 0;
     });
 
     options.AddFixedWindowLimiter("global", limiterOptions =>
     {
-        limiterOptions.PermitLimit = 100;
+        limiterOptions.PermitLimit = isTesting ? int.MaxValue : 100;
         limiterOptions.Window = TimeSpan.FromMinutes(1);
         limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        limiterOptions.QueueLimit = 5;
+        limiterOptions.QueueLimit = isTesting ? int.MaxValue : 5;
     });
 
     options.RejectionStatusCode = 429;

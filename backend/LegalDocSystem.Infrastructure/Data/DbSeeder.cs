@@ -54,6 +54,7 @@ public static class DbSeeder
             Phone = "+1-555-0101",
             Role = UserRole.CompanyOwner,
             IsActive = true,
+            IsEmailVerified = true,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = "Seeder"
         };
@@ -70,6 +71,7 @@ public static class DbSeeder
             Phone = "+1-555-0102",
             Role = UserRole.User,
             IsActive = true,
+            IsEmailVerified = true,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = "Seeder"
         };
@@ -146,6 +148,7 @@ public static class DbSeeder
                 Phone = string.Empty,
                 Role = UserRole.PlatformAdmin,
                 IsActive = true,
+                IsEmailVerified = true,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "Seeder"
             },
@@ -159,6 +162,7 @@ public static class DbSeeder
                 Phone = string.Empty,
                 Role = UserRole.PlatformSuperAdmin,
                 IsActive = true,
+                IsEmailVerified = true,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "Seeder"
             }
