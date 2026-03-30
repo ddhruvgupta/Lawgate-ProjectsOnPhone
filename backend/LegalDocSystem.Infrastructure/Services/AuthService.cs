@@ -167,7 +167,8 @@ public class AuthService : IAuthService
                     Phone = user.Phone,
                     Role = user.Role.ToString(),
                     CompanyName = company.Name,
-                    IsActive = user.IsActive
+                    IsActive = user.IsActive,
+                    IsEmailVerified = user.IsEmailVerified
                 }
             };
         }
@@ -210,6 +211,12 @@ public class AuthService : IAuthService
                 throw new UnauthorizedAccessException("Company account is inactive");
             }
 
+            // Check if email is verified
+            if (!user.IsEmailVerified)
+            {
+                throw new UnauthorizedAccessException("Email address not verified. Please check your inbox or request a new verification email.");
+            }
+
             // Update last login
             user.LastLoginAt = DateTime.UtcNow;
 
@@ -244,7 +251,8 @@ public class AuthService : IAuthService
                     Phone = user.Phone,
                     Role = user.Role.ToString(),
                     CompanyName = user.Company.Name,
-                    IsActive = user.IsActive
+                    IsActive = user.IsActive,
+                    IsEmailVerified = user.IsEmailVerified
                 }
             };
         }
@@ -306,14 +314,10 @@ public class AuthService : IAuthService
                 Phone = user.Phone,
                 Role = user.Role.ToString(),
                 CompanyName = user.Company.Name,
-                IsActive = user.IsActive
+                IsActive = user.IsActive,
+                IsEmailVerified = user.IsEmailVerified
             }
         };
-    }
-
-    public async Task<bool> ValidateTokenAsync(string token)
-    {
-        return await Task.FromResult(_jwtTokenService.ValidateToken(token));
     }
 
     public async Task ForgotPasswordAsync(string email)
@@ -411,5 +415,10 @@ public class AuthService : IAuthService
         {
             _logger.LogError(ex, "Failed to resend verification email to {Email}", email);
         }
+    }
+
+    public async Task<bool> ValidateTokenAsync(string token)
+    {
+        return await Task.FromResult(_jwtTokenService.ValidateToken(token));
     }
 }

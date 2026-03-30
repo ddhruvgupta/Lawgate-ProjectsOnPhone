@@ -6,6 +6,7 @@ export const LoginPage: React.FC = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [showResendVerification, setShowResendVerification] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -19,7 +20,11 @@ export const LoginPage: React.FC = () => {
       await login(email, password);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.message || 'Login failed. Please check your credentials.');
+      const msg = err.message || 'Login failed. Please check your credentials.';
+      if (msg.toLowerCase().includes('not verified')) {
+        setShowResendVerification(true);
+      }
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -39,7 +44,14 @@ export const LoginPage: React.FC = () => {
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           {error && (
             <div role="alert" className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded relative">
-              {error}
+              <p>{error}</p>
+              {showResendVerification && (
+                <p className="mt-2 text-sm">
+                  <Link to="/resend-verification" className="font-medium underline">
+                    Resend verification email
+                  </Link>
+                </p>
+              )}
             </div>
           )}
           <div className="rounded-md shadow-sm space-y-4">

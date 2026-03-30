@@ -17,6 +17,13 @@ param jwtSecretKey string
 @description('Storage account name — used to retrieve keys for the connection string')
 param storageAccountName string
 
+@description('Azure Communication Services primary connection string')
+@secure()
+param communicationServiceConnectionString string
+
+@description('Sender email domain from the Azure Managed Domain (e.g. <uuid>.azurecomm.net)')
+param acsSenderDomain string
+
 @description('Principal ID of the App Service managed identity that needs read access')
 param appServicePrincipalId string
 
@@ -106,6 +113,28 @@ resource storageConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-0
   properties: {
     // listKeys() retrieves the storage key at deploy time — value is stored securely in Key Vault
     value: 'DefaultEndpointsProtocol=https;AccountName=${existingStorageAccount.name};AccountKey=${existingStorageAccount.listKeys().keys[0].value};EndpointSuffix=core.windows.net'
+    attributes: {
+      enabled: true
+    }
+  }
+}
+
+resource acsConnectionStringSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'AzureCommunicationServicesConnectionString'
+  properties: {
+    value: communicationServiceConnectionString
+    attributes: {
+      enabled: true
+    }
+  }
+}
+
+resource acsSenderDomainSecret 'Microsoft.KeyVault/vaults/secrets@2023-07-01' = {
+  parent: keyVault
+  name: 'AcsSenderDomain'
+  properties: {
+    value: acsSenderDomain
     attributes: {
       enabled: true
     }

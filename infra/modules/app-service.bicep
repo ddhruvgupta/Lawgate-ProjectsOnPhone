@@ -106,6 +106,15 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
           name: 'AzureStorage__ContainerName'
           value: 'legal-documents'
         }
+        // Azure Communication Services — connection string and sender domain via Key Vault reference
+        {
+          name: 'Email__AcsConnectionString'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/AzureCommunicationServicesConnectionString/)'
+        }
+        {
+          name: 'Email__SenderAddress'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/AcsSenderDomain/)'
+        }
         // CORS — allow the Static Web App frontend origin
         {
           name: 'Cors__AllowedOrigins__0'

@@ -49,7 +49,12 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 // Register Services
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
-builder.Services.AddScoped<IEmailService, ConsoleEmailService>();
+
+// Use ACS (Azure Communication Services) in production; console stub in development
+if (builder.Environment.IsProduction())
+    builder.Services.AddScoped<IEmailService, AcsEmailService>();
+else
+    builder.Services.AddScoped<IEmailService, ConsoleEmailService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IBlobStorageService, AzureBlobStorageService>();
 builder.Services.AddScoped<IDocumentService, DocumentService>();
@@ -93,6 +98,8 @@ builder.Services.AddResponseCompression(options =>
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("Jwt");
 var secretKey = jwtSettings["SecretKey"];
+if (string.IsNullOrWhiteSpace(secretKey))
+    throw new InvalidOperationException("Jwt:SecretKey is not configured. Set it via environment variable, user-secrets, or Key Vault.");
 
 builder.Services.AddAuthentication(options =>
 {

@@ -2,7 +2,7 @@
 
 ## Current Status
 
-**95%+ MVP complete** as of March 2026. All core services, controllers, authentication, Azure Blob Storage integration, multi-tenancy, audit logging, and document versioning are implemented and functional.
+**Production-ready** as of March 2026. All core services, controllers, authentication, email verification, Azure Blob Storage integration, multi-tenancy, audit logging, and document versioning are implemented. All 6 production-blocking gaps resolved.
 
 | Layer | Status |
 |-------|--------|
@@ -18,9 +18,9 @@
 | Background services | ✅ Complete |
 | Database migrations (5) | ✅ Complete |
 | Development seed data | ✅ Complete |
-| Unit tests | ⏳ In progress |
-| Email verification / password reset | ❌ Not started |
-| Rate limiting | ❌ Not started |
+| Unit tests (29 passing) | ✅ Complete |
+| Email verification / password reset | ✅ Complete |
+| Rate limiting | ✅ Complete |
 
 ---
 
@@ -107,6 +107,10 @@ dotnet test
 | POST | `/api/auth/refresh` | Refresh access token | No |
 | POST | `/api/auth/validate` | Validate token | No |
 | GET | `/api/auth/me` | Get current authenticated user | Yes |
+| POST | `/api/auth/forgot-password` | Request password reset email | No |
+| POST | `/api/auth/reset-password` | Reset password with token | No |
+| POST | `/api/auth/verify-email` | Verify email address with token | No |
+| POST | `/api/auth/resend-verification` | Resend email verification link | No |
 
 ### Projects — `CompanyOwner`, `Admin`, `User`
 | Method | Path | Description |
@@ -151,11 +155,6 @@ dotnet test
 |--------|------|-------------|
 | GET | `/api/admin/companies` | List all companies with stats |
 
-### Test
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/test/database` | Database health check |
-
 ---
 
 ## Domain Entities
@@ -185,7 +184,8 @@ All registered as **scoped** services in DI:
 | Service | Responsibility |
 |---------|---------------|
 | `JwtTokenService` | Create/validate JWT tokens, extract claims |
-| `AuthService` | Register, login, refresh token logic |
+| `AuthService` | Register, login, refresh token, email verify, password reset |
+| `AcsEmailService` | Send transactional email via Azure Communication Services |
 | `AzureBlobStorageService` | Generate SAS upload/download URLs, delete blobs |
 | `DocumentService` | Document CRUD, confirm upload, versioning |
 | `CompanyService` | Company CRUD |

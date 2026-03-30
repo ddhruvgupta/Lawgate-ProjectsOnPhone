@@ -7,6 +7,7 @@ export interface User {
   companyId: number;
   phoneNumber?: string;
   isActive: boolean;
+  isEmailVerified: boolean;
 }
 
 /** Must match backend LegalDocSystem.Domain.Enums.UserRole */

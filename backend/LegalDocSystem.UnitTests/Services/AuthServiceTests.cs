@@ -79,7 +79,7 @@ public class AuthServiceTests : IDisposable
         return company;
     }
 
-    private User CreateAndSaveUser(int companyId, string email, string password, bool isActive = true)
+    private User CreateAndSaveUser(int companyId, string email, string password, bool isActive = true, bool isEmailVerified = true)
     {
         var user = new User
         {
@@ -91,6 +91,7 @@ public class AuthServiceTests : IDisposable
             Phone = "",
             Role = UserRole.CompanyOwner,
             IsActive = isActive,
+            IsEmailVerified = isEmailVerified,
             CreatedBy = "Test"
         };
         _context.Users.Add(user);
@@ -114,6 +115,24 @@ public class AuthServiceTests : IDisposable
         result.Should().NotBeNull();
         result.Token.Should().Be("fake-jwt-token");
         result.User.Email.Should().Be("owner@test.com");
+        result.User.IsEmailVerified.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task LoginAsync_WithUnverifiedEmail_ThrowsUnauthorizedAccessException()
+    {
+        // Arrange
+        var company = CreateAndSaveActiveCompany();
+        CreateAndSaveUser(company.Id, "owner@test.com", "Test@1234", isEmailVerified: false);
+
+        var loginDto = new LoginDto { Email = "owner@test.com", Password = "Test@1234" };
+
+        // Act
+        Func<Task> act = async () => await _sut.LoginAsync(loginDto);
+
+        // Assert
+        await act.Should().ThrowAsync<UnauthorizedAccessException>()
+            .WithMessage("*not verified*");
     }
 
     [Fact]
@@ -330,7 +349,7 @@ public class AuthServiceTests : IDisposable
         // Arrange
         var company = CreateAndSaveActiveCompany();
         const string rawToken = "expired-verify-token";
-        var user = CreateAndSaveUser(company.Id, "owner@test.com", "Test@1234");
+        var user = CreateAndSaveUser(company.Id, "owner@test.com", "Test@1234", isEmailVerified: false);
         user.EmailVerificationToken = HashToken(rawToken);
         user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(-1); // expired
         await _context.SaveChangesAsync();

@@ -45,6 +45,16 @@ export const DashboardPage: React.FC = () => {
         <p className="text-sm text-gray-500 mt-1">Here's an overview of your firm's activity.</p>
       </div>
 
+      {/* Email verification warning */}
+      {user && !user.isEmailVerified && (
+        <div className="mb-6 bg-yellow-50 border border-yellow-300 text-yellow-800 px-4 py-3 rounded flex items-center justify-between">
+          <span>Your email address has not been verified. Please check your inbox.</span>
+          <Link to="/resend-verification" className="ml-4 font-medium underline text-yellow-900">
+            Resend email
+          </Link>
+        </div>
+      )}
+
       {/* Stat cards */}
       {projectsLoading || teamLoading ? (
         <CardSkeleton count={4} />

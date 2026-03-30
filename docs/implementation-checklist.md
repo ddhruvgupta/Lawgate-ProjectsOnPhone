@@ -104,7 +104,7 @@ Use this checklist to track your progress in implementing the full application.
 - [ ] Create Role controller
 - [x] Add health check endpoint
 - [x] Implement authorization policies
-- [ ] Add input validation
+- [x] Add input validation (DTO validation attributes: `[Required]`, `[EmailAddress]`, `[MinLength]`, `[Phone]` on all auth DTOs)
 
 ### Configure API
 - [x] Setup Swagger/OpenAPI
@@ -147,7 +147,7 @@ Use this checklist to track your progress in implementing the full application.
 - [x] Test container networking
 
 ### Testing Setup
-- [ ] Setup backend unit tests (xUnit)
+- [x] Setup backend unit tests (xUnit) — 29 tests, all passing
 - [ ] Setup frontend unit tests (Vitest)
 - [ ] Create sample tests
 - [ ] Setup integration tests (optional)
@@ -183,6 +183,23 @@ Use this checklist to track your progress in implementing the full application.
 - [x] Implement input sanitization (InputSanitizationMiddleware strips HTML/script tags from all JSON request bodies)
 - [x] Add SQL injection protection (EF Core parameterized queries throughout)
 - [x] Review and restrict CORS origins (explicit AllowedOrigins list in appsettings.json; no wildcard)
+
+### Email Infrastructure
+- [x] Azure Communication Services resource deployed (data residency: India — lawgate-prod-acs)
+- [x] Email Communication Service + Azure Managed Domain provisioned
+- [x] AcsEmailService implemented using Azure.Communication.Email SDK
+- [x] ACS connection string + sender domain stored in dotnet user-secrets (dev) and Key Vault (prod)
+- [x] Production: AcsEmailService registered; Development: ConsoleEmailService registered (logs to file)
+
+### ✅ All Production-Blocking Gaps Resolved (March 2026)
+
+- [x] **Email verification enforced at login** — `LoginAsync` blocks login and throws `UnauthorizedAccessException` for unverified users; frontend shows resend-verification link on login error.
+- [x] **DTO validation attributes added** — `LoginDto`, `RegisterDto`, `RefreshTokenRequest` all have `[Required]`, `[EmailAddress]`, `[MinLength]`, `[Phone]` annotations; `ModelState.IsValid` now catches bad input.
+- [x] **TestController removed** — Unauthenticated seed endpoint `api/test/seed-company` deleted.
+- [x] **`UserDto` includes `IsEmailVerified`** — Returned in every token response; frontend shows a warning banner on dashboard and a resend link on login when unverified.
+- [x] **JWT secret removed from appsettings.json** — `SecretKey` is now empty in `appsettings.json`; populated via user-secrets/Key Vault; startup throws `InvalidOperationException` if missing.
+- [x] **SmtpEmailService dead code removed** — File deleted; `AcsEmailService` is the sole email implementation.
+- [ ] **SmtpEmailService is orphaned dead code** — Replace with ACS was done but the file `SmtpEmailService.cs` was not removed. Delete it to avoid confusion.
 
 ## Phase 7: Azure Deployment Preparation
 

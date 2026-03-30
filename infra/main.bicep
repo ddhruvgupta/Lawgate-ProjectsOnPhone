@@ -116,7 +116,17 @@ module appService 'modules/app-service.bicep' = {
   }
 }
 
-// --- Key Vault (depends on: database, storage, appService) -------------------
+// --- Communication Services (no dependencies) --------------------------------
+
+module communication 'modules/communication.bicep' = {
+  name: 'communication'
+  params: {
+    communicationServiceName: '${namePrefix}-acs-${take(suffix, 6)}'
+    dataLocation: 'India'
+  }
+}
+
+// --- Key Vault (depends on: database, storage, appService, communication) ----
 // Deployed last so it has the App Service principal ID for RBAC assignment
 // and can call listKeys() on the storage account
 
@@ -129,6 +139,8 @@ module keyvault 'modules/keyvault.bicep' = {
     jwtSecretKey: jwtSecretKey
     storageAccountName: storage.outputs.storageAccountName
     appServicePrincipalId: appService.outputs.principalId
+    communicationServiceConnectionString: communication.outputs.primaryConnectionString
+    acsSenderDomain: communication.outputs.senderDomain
   }
 }
 
@@ -150,6 +162,9 @@ output databaseServerFqdn string = database.outputs.serverFqdn
 
 @description('Storage account name')
 output storageAccountName string = storage.outputs.storageAccountName
+
+@description('Azure Communication Services resource name')
+output communicationServiceName string = communication.outputs.communicationServiceName
 
 @description('App Insights connection string (safe — not a secret)')
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
