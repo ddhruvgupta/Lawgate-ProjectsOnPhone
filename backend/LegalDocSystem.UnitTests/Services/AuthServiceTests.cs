@@ -99,6 +99,164 @@ public class AuthServiceTests : IDisposable
         return user;
     }
 
+    // ─── Register ──────────────────────────────────────────────────────────
+
+    private static RegisterDto ValidRegisterDto(string email = "newowner@test.com", string companyEmail = "newco@test.com") => new()
+    {
+        CompanyName = "New Law Firm",
+        CompanyEmail = companyEmail,
+        FirstName = "Jane",
+        LastName = "Smith",
+        Email = email,
+        Password = "Secure@1234",
+    };
+
+    [Fact]
+    public async Task RegisterAsync_WithValidData_CreatesCompanyInDatabase()
+    {
+        // Act
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        var company = await _context.Companies.FirstOrDefaultAsync(c => c.Email == "newco@test.com");
+        company.Should().NotBeNull();
+        company!.Name.Should().Be("New Law Firm");
+        company.SubscriptionTier.Should().Be(SubscriptionTier.Trial);
+        company.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithValidData_CreatesUserWithCompanyOwnerRole()
+    {
+        // Act
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == "newowner@test.com");
+        user.Should().NotBeNull();
+        user!.Role.Should().Be(UserRole.CompanyOwner);
+        user.FirstName.Should().Be("Jane");
+        user.LastName.Should().Be("Smith");
+        user.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithValidData_SetsIsEmailVerifiedFalse()
+    {
+        // Act
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        var user = await _context.Users.FirstAsync(u => u.Email == "newowner@test.com");
+        user.IsEmailVerified.Should().BeFalse();
+        user.EmailVerificationToken.Should().NotBeNullOrWhiteSpace();
+        user.EmailVerificationTokenExpiry.Should().BeAfter(DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithValidData_StoresHashedPasswordNotPlaintext()
+    {
+        // Act
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        var user = await _context.Users.FirstAsync(u => u.Email == "newowner@test.com");
+        user.PasswordHash.Should().NotBe("Secure@1234");
+        BCrypt.Net.BCrypt.Verify("Secure@1234", user.PasswordHash).Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithValidData_ReturnsToken()
+    {
+        // Act
+        var result = await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        result.Token.Should().Be("fake-jwt-token");
+        result.RefreshToken.Should().NotBeNullOrWhiteSpace();
+        result.User.Email.Should().Be("newowner@test.com");
+        result.User.Role.Should().Be("CompanyOwner");
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithValidData_SendsVerificationEmail()
+    {
+        // Act
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        await _emailService.Received(1)
+            .SendEmailVerificationAsync("newowner@test.com", "Jane", Arg.Any<string>());
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithNullPhone_Succeeds()
+    {
+        // Arrange
+        var dto = ValidRegisterDto();
+        dto.Phone = null;
+        dto.CompanyPhone = null;
+
+        // Act
+        Func<Task> act = async () => await _sut.RegisterAsync(dto);
+
+        // Assert
+        await act.Should().NotThrowAsync();
+        var user = await _context.Users.FirstAsync(u => u.Email == "newowner@test.com");
+        user.Phone.Should().Be(string.Empty);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithDuplicateCompanyEmail_ThrowsInvalidOperationException()
+    {
+        // Arrange — seed a company with the same email
+        CreateAndSaveActiveCompany(); // Email = "company@test.com"
+        var dto = ValidRegisterDto(companyEmail: "company@test.com");
+
+        // Act
+        Func<Task> act = async () => await _sut.RegisterAsync(dto);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*Company with this email already exists*");
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithDuplicateUserEmail_ThrowsInvalidOperationException()
+    {
+        // Arrange — seed a user with the same email
+        var company = CreateAndSaveActiveCompany();
+        CreateAndSaveUser(company.Id, "newowner@test.com", "OldPassword@1234");
+
+        var dto = ValidRegisterDto(); // same user email
+
+        // Act
+        Func<Task> act = async () => await _sut.RegisterAsync(dto);
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>()
+            .WithMessage("*User with this email already exists*");
+    }
+
+    [Fact]
+    public async Task RegisterAsync_EmailServiceFailure_DoesNotAbortRegistration()
+    {
+        // Arrange — email service throws
+        _emailService
+            .SendEmailVerificationAsync(Arg.Any<string>(), Arg.Any<string>(), Arg.Any<string>())
+            .Returns(Task.FromException(new Exception("SMTP unavailable")));
+
+        // Act — registration should still succeed
+        Func<Task> act = async () => await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        await act.Should().NotThrowAsync();
+        var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == "newowner@test.com");
+        user.Should().NotBeNull();
+    }
+
+    // ─── Login ─────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task LoginAsync_WithValidCredentials_ReturnsToken()
     {

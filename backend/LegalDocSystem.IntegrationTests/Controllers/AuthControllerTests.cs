@@ -58,6 +58,231 @@ public class AuthControllerTests : IAsyncLifetime
         await db.SaveChangesAsync();
     }
 
+    // ─── Register ──────────────────────────────────────────────────────────
+
+    private static object ValidRegisterPayload(string email = "newowner@integration.com", string companyEmail = "newco@integration.com") => new
+    {
+        companyName = "Integration Law Firm",
+        companyEmail,
+        firstName = "Jane",
+        lastName = "Smith",
+        email,
+        password = "Secure@1234",
+    };
+
+    [Fact]
+    public async Task Register_WithValidData_Returns200WithToken()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload());
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("success").GetBoolean().Should().BeTrue();
+        doc.RootElement.GetProperty("data").GetProperty("token").GetString()
+            .Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Register_WithValidData_PersistsUserToDatabase()
+    {
+        await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == "newowner@integration.com");
+        user.Should().NotBeNull();
+        user!.FirstName.Should().Be("Jane");
+        user.LastName.Should().Be("Smith");
+    }
+
+    [Fact]
+    public async Task Register_WithValidData_SetsIsEmailVerifiedFalse()
+    {
+        await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var user = await db.Users.FirstAsync(u => u.Email == "newowner@integration.com");
+        user.IsEmailVerified.Should().BeFalse();
+        user.EmailVerificationToken.Should().NotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task Register_WithValidData_CreatesTrialCompany()
+    {
+        await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload());
+
+        using var scope = _factory.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        var company = await db.Companies.FirstOrDefaultAsync(c => c.Email == "newco@integration.com");
+        company.Should().NotBeNull();
+        company!.Name.Should().Be("Integration Law Firm");
+        company.IsActive.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Register_WithPhone_Returns200()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyName = "Phone Firm",
+            companyEmail = "phonefirm@integration.com",
+            firstName = "John",
+            lastName = "Doe",
+            email = "john.phone@integration.com",
+            password = "Secure@1234",
+            phone = "+14047175785",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Register_WithoutPhone_Returns200()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyName = "No Phone Firm",
+            companyEmail = "nophone@integration.com",
+            firstName = "John",
+            lastName = "Doe",
+            email = "nophone@integration.com",
+            password = "Secure@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task Register_WithMissingCompanyName_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyEmail = "x@test.com",
+            firstName = "A",
+            lastName = "B",
+            email = "x@test.com",
+            password = "Secure@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Register_WithMissingFirstName_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyName = "Firm",
+            companyEmail = "x@test.com",
+            lastName = "B",
+            email = "x@test.com",
+            password = "Secure@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Register_WithMissingLastName_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyName = "Firm",
+            companyEmail = "x@test.com",
+            firstName = "A",
+            email = "x@test.com",
+            password = "Secure@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Register_WithMissingEmail_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyName = "Firm",
+            companyEmail = "x@test.com",
+            firstName = "A",
+            lastName = "B",
+            password = "Secure@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Register_WithInvalidEmailFormat_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyName = "Firm",
+            companyEmail = "not-an-email",
+            firstName = "A",
+            lastName = "B",
+            email = "also-not-email",
+            password = "Secure@1234",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Register_WithPasswordTooShort_Returns400()
+    {
+        var response = await _client.PostAsJsonAsync("/api/auth/register", new
+        {
+            companyName = "Firm",
+            companyEmail = "x@test.com",
+            firstName = "A",
+            lastName = "B",
+            email = "x@test.com",
+            password = "short",
+        });
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Register_WithDuplicateUserEmail_Returns400()
+    {
+        // Arrange — register once
+        await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload(
+            email: "dup@integration.com", companyEmail: "dup1@integration.com"));
+
+        // Act — second registration with same user email
+        var response = await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload(
+            email: "dup@integration.com", companyEmail: "dup2@integration.com"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task Register_WithDuplicateCompanyEmail_Returns400()
+    {
+        // Arrange — register once
+        await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload(
+            email: "owner1@integration.com", companyEmail: "shared@integration.com"));
+
+        // Act — second registration with same company email
+        var response = await _client.PostAsJsonAsync("/api/auth/register", ValidRegisterPayload(
+            email: "owner2@integration.com", companyEmail: "shared@integration.com"));
+
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var json = await response.Content.ReadAsStringAsync();
+        using var doc = JsonDocument.Parse(json);
+        doc.RootElement.GetProperty("success").GetBoolean().Should().BeFalse();
+    }
+
+    // ─── Login ─────────────────────────────────────────────────────────────
+
     [Fact]
     public async Task Login_WithValidCredentials_Returns200WithToken()
     {
