@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Dialog, DialogPanel, DialogTitle } from '@headlessui/react';
@@ -57,7 +57,7 @@ export const ProjectsPage: React.FC = () => {
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<FormValues>({ resolver: zodResolver(schema) as any });
+  } = useForm<FormValues>({ resolver: zodResolver(schema) as Resolver<FormValues> });
 
   const onSubmit = (values: FormValues) => {
     const payload: CreateProjectRequest = {

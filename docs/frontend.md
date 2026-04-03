@@ -9,6 +9,9 @@ React 19 application with Vite, Tailwind CSS 4, TypeScript, and modern developme
 |-------|-----------|------|-------|
 | `/login` | `LoginPage` | Public | — |
 | `/register` | `RegisterPage` | Public | — |
+| `/forgot-password` | `ForgotPasswordPage` | Public | — |
+| `/reset-password` | `ResetPasswordPage` | Public | — |
+| `/verify-email` | `VerifyEmailPage` | Public | — |
 | `/dashboard` | `DashboardPage` | Required | All |
 | `/projects` | `ProjectsPage` | Required | All |
 | `/projects/:id` | `ProjectDetailPage` | Required | All |

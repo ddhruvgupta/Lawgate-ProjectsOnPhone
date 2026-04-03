@@ -163,7 +163,7 @@ app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers().RequireRateLimiting("global");
 
 // Health check endpoint
 app.MapGet("/health", () => Results.Ok(new { 

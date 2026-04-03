@@ -4,10 +4,11 @@ namespace LegalDocSystem.API.Middleware;
 /// Adds security-hardening HTTP response headers.
 ///
 /// CSRF posture: This API uses stateless JWT Bearer tokens sent via the Authorization header.
-/// Cross-origin requests cannot set custom headers (blocked by the browser's CORS preflight),
-/// so CSRF via forged cross-origin requests is not possible without a valid Bearer token.
-/// If cookies are ever introduced for token storage, switch to SameSite=Strict cookies and
-/// add ASP.NET Core's built-in AntiForgery services.
+/// Browsers do not automatically attach Bearer tokens to cross-site requests (unlike cookies),
+/// so a forged cross-origin request cannot be authenticated unless the attacker can access
+/// and explicitly send the victim's token.
+/// If cookies are ever introduced for token storage, use SameSite=Strict (or appropriately
+/// restrictive) cookies and add ASP.NET Core's built-in AntiForgery services.
 /// </summary>
 public class SecurityHeadersMiddleware
 {

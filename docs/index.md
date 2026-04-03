@@ -45,7 +45,7 @@
 ### Progress Tracking
 | File | Description |
 |------|-------------|
-| [implementation-checklist.md](implementation-checklist.md) | Phase-by-phase checklist — **current phase: 6** |
+| [implementation-checklist.md](implementation-checklist.md) | Phase-by-phase checklist — **current phase: 7** |
 
 ### AI Context Files
 > Context files for AI assistants — loaded at the start of each session.
@@ -78,6 +78,6 @@ Database  █████████████████████ 100% �
 DevOps    ████████████░░░░░░░░░  55% — Docker ready; CI/CD and Azure pending
 ```
 
-**Currently in**: Phase 6 — Advanced Features (rate limiting, email verification, UI polish)
+**Currently in**: Phase 7 — Azure Deployment
 
 **Not started**: Phase 7 (Azure deployment), Phase 8 (CI/CD)
