@@ -12,7 +12,7 @@ public class RegisterDto
     public string CompanyEmail { get; set; } = string.Empty;
 
     [Phone]
-    public string CompanyPhone { get; set; } = string.Empty;
+    public string? CompanyPhone { get; set; }
 
     [Required]
     public string FirstName { get; set; } = string.Empty;
@@ -29,5 +29,5 @@ public class RegisterDto
     public string Password { get; set; } = string.Empty;
 
     [Phone]
-    public string Phone { get; set; } = string.Empty;
+    public string? Phone { get; set; }
 }
