@@ -78,7 +78,7 @@ public class AuthService : IAuthService
             {
                 Name = registerDto.CompanyName,
                 Email = registerDto.CompanyEmail,
-                Phone = registerDto.CompanyPhone,
+                Phone = registerDto.CompanyPhone ?? string.Empty,
                 Address = "",
                 City = "",
                 State = "",
@@ -108,7 +108,7 @@ public class AuthService : IAuthService
                 LastName = registerDto.LastName,
                 Email = registerDto.Email,
                 PasswordHash = passwordHash,
-                Phone = registerDto.Phone,
+                Phone = registerDto.Phone ?? string.Empty,
                 Role = UserRole.CompanyOwner,
                 IsActive = true,
                 IsEmailVerified = false,
