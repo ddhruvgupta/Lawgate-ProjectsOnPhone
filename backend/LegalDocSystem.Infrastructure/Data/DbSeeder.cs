@@ -88,7 +88,7 @@ public static class DbSeeder
             ClientName = "Acme Corporation",
             CaseNumber = "CASE-2026-001",
             Status = ProjectStatus.Active,
-            StartDate = DateTime.UtcNow,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
             CreatedAt = DateTime.UtcNow,
             CreatedBy = owner.Email
         };

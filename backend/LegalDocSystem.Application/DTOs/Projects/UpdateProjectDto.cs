@@ -19,7 +19,7 @@ public class UpdateProjectDto
     public string? CaseNumber { get; set; }
 
     public ProjectStatus Status { get; set; }
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public string? Tags { get; set; }
 }
