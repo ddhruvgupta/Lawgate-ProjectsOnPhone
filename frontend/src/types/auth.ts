@@ -20,11 +20,12 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   companyName: string;
+  companyEmail: string;
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-  phoneNumber?: string;
+  phone?: string;
 }
 
 export interface TokenResponse {

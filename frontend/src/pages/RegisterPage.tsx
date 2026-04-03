@@ -4,13 +4,13 @@ import { useAuth } from '../contexts/AuthContext';
 import type { RegisterRequest } from '../types/auth';
 
 export const RegisterPage: React.FC = () => {
-  const [formData, setFormData] = useState<RegisterRequest>({
+  const [formData, setFormData] = useState({
     companyName: '',
     email: '',
     password: '',
     firstName: '',
     lastName: '',
-    phoneNumber: '',
+    phone: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
@@ -43,7 +43,7 @@ export const RegisterPage: React.FC = () => {
     setIsLoading(true);
 
     try {
-      await register(formData);
+      await register({ ...formData, companyEmail: formData.email });
       navigate('/dashboard');
     } catch (err: any) {
       setError(err.message || 'Registration failed. Please try again.');
@@ -144,10 +144,10 @@ export const RegisterPage: React.FC = () => {
                 Phone Number
               </label>
               <input
-                id="phoneNumber"
-                name="phoneNumber"
+                id="phone"
+                name="phone"
                 type="tel"
-                value={formData.phoneNumber}
+                value={formData.phone}
                 onChange={handleChange}
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
                 placeholder="+1 (555) 123-4567"
