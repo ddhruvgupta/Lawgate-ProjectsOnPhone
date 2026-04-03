@@ -140,6 +140,21 @@ public class TestWebAppFactory : WebApplicationFactory<Program>, IAsyncLifetime
             CreatedBy = "TestSetup"
         });
 
+        // Regular User (no delete permission)
+        db.Users.Add(new User
+        {
+            CompanyId = company.Id,
+            FirstName = "Regular",
+            LastName = "Member",
+            Email = "member@test.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test@1234"),
+            Phone = "",
+            Role = UserRole.User,
+            IsActive = true,
+            IsEmailVerified = true,
+            CreatedBy = "TestSetup"
+        });
+
         // PlatformSuperAdmin user
         db.Users.Add(new User
         {
