@@ -59,8 +59,8 @@ public class ProjectService : IProjectService
             ClientName = dto.ClientName,
             CaseNumber = dto.CaseNumber,
             Status = dto.Status,
-            StartDate = dto.StartDate,
-            EndDate = dto.EndDate,
+            StartDate = dto.StartDate.HasValue ? DateTime.SpecifyKind(dto.StartDate.Value, DateTimeKind.Utc) : null,
+            EndDate = dto.EndDate.HasValue ? DateTime.SpecifyKind(dto.EndDate.Value, DateTimeKind.Utc) : null,
             Tags = dto.Tags,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = createdBy
@@ -84,8 +84,8 @@ public class ProjectService : IProjectService
         project.ClientName = dto.ClientName;
         project.CaseNumber = dto.CaseNumber;
         project.Status = dto.Status;
-        project.StartDate = dto.StartDate;
-        project.EndDate = dto.EndDate;
+        project.StartDate = dto.StartDate.HasValue ? DateTime.SpecifyKind(dto.StartDate.Value, DateTimeKind.Utc) : null;
+        project.EndDate = dto.EndDate.HasValue ? DateTime.SpecifyKind(dto.EndDate.Value, DateTimeKind.Utc) : null;
         project.Tags = dto.Tags;
         project.UpdatedAt = DateTime.UtcNow;
         project.UpdatedBy = updatedBy;
