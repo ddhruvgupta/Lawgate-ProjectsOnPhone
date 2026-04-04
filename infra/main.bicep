@@ -169,5 +169,5 @@ output communicationServiceName string = communication.outputs.communicationServ
 @description('App Insights connection string (safe — not a secret)')
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString
 
-@description('Static Web App deployment token — add to GitHub Secrets as AZURE_STATIC_WEB_APPS_API_TOKEN')
-output staticWebAppDeploymentToken string = staticWebApp.outputs.deploymentToken
+// staticWebAppDeploymentToken is intentionally NOT output here — see infra/modules/static-web-app.bicep
+// for the secure retrieval instructions (az staticwebapp secrets list).

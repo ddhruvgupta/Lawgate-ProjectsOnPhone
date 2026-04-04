@@ -40,12 +40,6 @@ resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
 }
 
 // ---------------------------------------------------------------------------
-// Helper: Build @Microsoft.KeyVault() reference strings
-// ---------------------------------------------------------------------------
-
-var kvRef = 'https://'  // unused — refs built inline for clarity
-
-// ---------------------------------------------------------------------------
 // Web App — .NET 10 on Linux with system-assigned managed identity
 // ---------------------------------------------------------------------------
 

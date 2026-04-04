@@ -40,5 +40,9 @@ resource staticWebApp 'Microsoft.Web/staticSites@2024-04-01' = {
 output defaultHostname string = staticWebApp.properties.defaultHostname
 output staticWebAppName string = staticWebApp.name
 
-@description('Deployment token for GitHub Actions — store as AZURE_STATIC_WEB_APPS_API_TOKEN secret')
-output deploymentToken string = staticWebApp.listSecrets().properties.apiKey
+// Note: The deployment token (API key) is intentionally NOT output here.
+// Exposing secrets in ARM deployment outputs stores them in Azure deployment history,
+// where they are readable by anyone with read access to the resource group.
+// Retrieve the token securely after deployment:
+//   az staticwebapp secrets list --name <app-name> --query "properties.apiKey" -o tsv
+// Then store the value as the AZURE_STATIC_WEB_APPS_API_TOKEN GitHub Actions secret.
