@@ -5,19 +5,24 @@ Keep this handy for common commands and tasks!
 ## 🚀 Starting Development
 
 ```powershell
-# Start everything
+# Start everything (recommended — all services in Docker)
 docker-compose up -d
+# API:     http://localhost:5059
+# Swagger: http://localhost:5059/swagger
+# App:     http://localhost:5174
+
+# OR — run locally (outside Docker)
 
 # Backend (Terminal 1)
 cd backend
-dotnet watch run
-# API: http://localhost:5000
-# Swagger: http://localhost:5000/swagger
+dotnet watch run --project LegalDocSystem.API
+# API: http://localhost:5059
+# Swagger: http://localhost:5059/swagger
 
 # Frontend (Terminal 2)
 cd frontend
 npm run dev
-# App: http://localhost:3000
+# App: http://localhost:5173
 ```
 
 ## 🗄️ Database Commands
@@ -158,54 +163,86 @@ pg_dump -U lawgate_user -h localhost lawgate_db > backup.sql
 psql -U lawgate_user -h localhost lawgate_db < backup.sql
 ```
 
-## 🔐 Default Test Users
+## 🔐 Default Dev Users
 
-**Admin Account:**
-- Email: `admin@lawgate.com`
-- Password: `Admin@123`
+All seeded users have `IsEmailVerified = true`.
 
-**User Account:**
-- Email: `user@lawgate.com`
-- Password: `User@123`
+| Email | Password | Role |
+|-------|----------|------|
+| `admin@demolawfirm.com` | `Admin@123` | CompanyOwner |
+| `jane.doe@demolawfirm.com` | `User@123` | User |
+| `admin@lawgate.io` | `LawgatePlatform@1` | PlatformAdmin |
+| `superadmin@lawgate.io` | `LawgateSuperAdmin@1` | PlatformSuperAdmin |
 
-⚠️ **These are for development only!**
+⚠️ **These are for development only. Never use in production.**
 
 ## 🌐 API Endpoints
 
 ### Authentication
-- POST `/api/auth/register` - Register new user
-- POST `/api/auth/login` - Login
-- POST `/api/auth/refresh` - Refresh token
-- POST `/api/auth/logout` - Logout
+- `POST /api/auth/register` — Register new company + owner
+- `POST /api/auth/login` — Login (returns access + refresh token)
+- `POST /api/auth/refresh` — Refresh access token
+- `GET  /api/auth/me` — Get current user
+- `POST /api/auth/forgot-password` — Request password reset email
+- `POST /api/auth/reset-password` — Reset password with token
+- `POST /api/auth/verify-email` — Verify email with token
+- `POST /api/auth/resend-verification` — Resend verification email
+
+### Projects
+- `GET    /api/projects` — List company projects
+- `GET    /api/projects/{id}` — Get project
+- `POST   /api/projects` — Create project
+- `PUT    /api/projects/{id}` — Update project
+- `DELETE /api/projects/{id}` — Delete project (Owner/Admin only)
+
+### Documents
+- `POST /api/documents/upload-url` — Generate SAS upload URL
+- `POST /api/documents/{id}/confirm` — Confirm upload
+- `GET  /api/documents/{id}` — Get document
+- `GET  /api/documents/{id}/download-url` — Generate SAS download URL
+- `GET  /api/documents/project/{projectId}` — List project documents
+- `DELETE /api/documents/{id}` — Delete document
 
 ### Users
-- GET `/api/users` - List users (Admin)
-- GET `/api/users/{id}` - Get user
-- PUT `/api/users/{id}` - Update user
-- DELETE `/api/users/{id}` - Delete user (Admin)
+- `GET  /api/users` — List company users (Admin/Owner)
+- `GET  /api/users/{id}` — Get user
+- `POST /api/users` — Create user (Admin/Owner)
+- `POST /api/users/{id}/toggle-status` — Activate/deactivate user
+
+### Company
+- `GET /api/companies/me` — Get current company
+- `PUT /api/companies/me` — Update company (Owner only)
+
+### Audit
+- `GET /api/audit` — Get audit logs (Owner/Admin only)
+
+### Platform Admin
+- `GET /api/admin/companies` — List all companies (PlatformAdmin only)
 
 ### Health
-- GET `/api/health` - Health check
+- `GET /health` — Health check
 
 ## 📁 File Locations
 
 ### Configuration
-- Backend: `backend/appsettings.Development.json` (Use User Secrets!)
-- Frontend: `frontend/.env.local`
+- Backend secrets: `dotnet user-secrets` (see below) — never edit `appsettings.json` directly
+- Frontend env: `frontend/.env.local`
 - Docker: `docker-compose.yml`
 - Database: `database/recreate-database.ps1`
 
 ### Documentation
-- Main: `docs/claude-main-context.md`
-- Setup: `SETUP-COMPLETE.md`
-- Azure: `docs/azure-deployment.md`
-- Environment: `docs/environment-setup.md`
-- Checklist: `IMPLEMENTATION-CHECKLIST.md`
+- Index: `docs/index.md`
+- AI context: `docs/ai-context/main.md`
+- Azure deployment: `docs/deployment.md`
+- Environment setup: `docs/environment-setup.md`
+- Checklist: `docs/implementation-checklist.md`
 
-### Component Docs
-- Frontend: `frontend/docs/README.md`, `frontend/docs/claude.md`
-- Backend: `backend/docs/README.md`, `backend/docs/claude.md`
-- Database: `database/docs/README.md`, `database/docs/claude.md`
+### Setting User Secrets (backend)
+```powershell
+cd backend
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_password_change_in_production"
+dotnet user-secrets set "Jwt:SecretKey" "your-super-secret-jwt-key-at-least-32-chars-long"
+```
 
 ## 🐛 Troubleshooting
 
@@ -281,30 +318,46 @@ npm run build
 ```
 
 ### Deploy to Azure
-See: `docs/azure-deployment.md`
+See: `docs/deployment.md`
+
+### Run Tests
+```powershell
+# All backend tests
+cd backend && dotnet test
+
+# Unit tests only
+dotnet test LegalDocSystem.UnitTests
+
+# Integration tests only (requires Docker)
+dotnet test LegalDocSystem.IntegrationTests
+
+# Frontend tests
+cd frontend && npm test
+```
 
 ## 📊 Connection Strings
 
-### Development
+### Development (Docker)
 ```
-Host=localhost;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_password_change_in_production
+Host=localhost;Port=5432;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_password_change_in_production
 ```
 
 ### Azure Production
 ```
-Host=<server>.postgres.database.azure.com;Database=lawgate_db;Username=<admin>;Password=<from-keyvault>;SslMode=Require
+Host=<server>.postgres.database.azure.com;Database=lawgate_db;Username=<admin>;Password=<from-keyvault>;SslMode=Require;TrustServerCertificate=false
 ```
 
 ## 💡 Pro Tips
 
-1. **Always run `database/recreate-database.ps1` when returning after a break**
-2. **Use User Secrets, never commit passwords**
-3. **Check Swagger UI for API testing: http://localhost:5000/swagger**
-4. **Keep documentation updated as you build**
-5. **Test migrations on local before production**
-6. **Commit often, push regularly**
-7. **Use `dotnet watch run` for hot reload**
-8. **Use `npm run dev` for frontend HMR**
+1. **Start with `docker-compose up -d`** — runs the full stack including Azurite (blob storage)
+2. **Use User Secrets, never commit passwords** — `dotnet user-secrets set "Jwt:SecretKey" "..."`
+3. **Swagger UI for API testing: http://localhost:5059/swagger**
+4. **Check Docker logs:** `docker logs lawgate-backend -f`
+5. **Verification emails go to logs in dev:** `docker exec lawgate-backend ls logs/emails/`
+6. **Test migrations on local before production**
+7. **Commit often, push regularly**
+8. **Use `dotnet watch run` for hot reload**
+9. **Use `npm run dev` for frontend HMR**
 
 ## 🆘 Emergency Recovery
 
@@ -316,29 +369,23 @@ Host=<server>.postgres.database.azure.com;Database=lawgate_db;Username=<admin>;P
 # 2. Clone/navigate to project
 cd Lawgate-ProjectsOnPhone
 
-# 3. Start Docker
-docker-compose up -d postgres
+# 3. Start full Docker stack (handles everything — DB, Azurite, backend, frontend)
+docker-compose up -d
 
-# 4. Recreate database
-cd database
-./recreate-database.ps1
+# 4. If running outside Docker, set backend secrets first:
+cd backend
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Port=5432;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_password_change_in_production"
+dotnet user-secrets set "Jwt:SecretKey" "your-super-secret-jwt-key-at-least-32-chars-long"
+dotnet watch run --project LegalDocSystem.API
 
-# 5. Setup backend secrets
-cd ../backend
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "Host=localhost;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_password_change_in_production"
-dotnet user-secrets set "Jwt:Key" "your-super-secret-jwt-key-at-least-32-chars-long"
-
-# 6. Start backend
-dotnet run
-
-# 7. Setup frontend (in new terminal)
-cd ../frontend
+# 5. Setup frontend (in new terminal, only if running outside Docker)
+cd frontend
 npm install
-# Create .env.local with: VITE_API_URL=http://localhost:5000/api
+# Create .env.local with: VITE_API_URL=http://localhost:5059/api
 npm run dev
 
-# 8. Test: Open http://localhost:3000
-# Login with: admin@lawgate.com / Admin@123
+# 6. Test: Open http://localhost:5174 (Docker) or http://localhost:5173 (local)
+# Login with: admin@demolawfirm.com / Admin@123
 ```
 
 **Time to working system: ~15 minutes** ✨
