@@ -19,6 +19,11 @@ public class User : BaseEntity
     public DateTime? LastLoginAt { get; set; }
     public string? ProfileImageUrl { get; set; }
     
+    // For email verification
+    public bool IsEmailVerified { get; set; } = false;
+    public string? EmailVerificationToken { get; set; }
+    public DateTime? EmailVerificationTokenExpiry { get; set; }
+
     // For password reset
     public string? ResetToken { get; set; }
     public DateTime? ResetTokenExpiry { get; set; }

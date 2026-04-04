@@ -1,3 +1,5 @@
+using LegalDocSystem.Domain.Enums;
+
 namespace LegalDocSystem.Application.DTOs.Projects;
 
 public class ProjectDto
@@ -8,9 +10,9 @@ public class ProjectDto
     public string Description { get; set; } = string.Empty;
     public string? ClientName { get; set; }
     public string? CaseNumber { get; set; }
-    public string Status { get; set; } = string.Empty;
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
+    public ProjectStatus Status { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public string? Tags { get; set; }
     public DateTime CreatedAt { get; set; }
     

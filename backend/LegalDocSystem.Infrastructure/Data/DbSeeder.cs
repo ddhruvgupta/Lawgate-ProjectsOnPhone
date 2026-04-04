@@ -54,6 +54,7 @@ public static class DbSeeder
             Phone = "+1-555-0101",
             Role = UserRole.CompanyOwner,
             IsActive = true,
+            IsEmailVerified = true,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = "Seeder"
         };
@@ -70,6 +71,7 @@ public static class DbSeeder
             Phone = "+1-555-0102",
             Role = UserRole.User,
             IsActive = true,
+            IsEmailVerified = true,
             CreatedAt = DateTime.UtcNow,
             CreatedBy = "Seeder"
         };
@@ -86,7 +88,7 @@ public static class DbSeeder
             ClientName = "Acme Corporation",
             CaseNumber = "CASE-2026-001",
             Status = ProjectStatus.Active,
-            StartDate = DateTime.UtcNow,
+            StartDate = DateOnly.FromDateTime(DateTime.UtcNow),
             CreatedAt = DateTime.UtcNow,
             CreatedBy = owner.Email
         };
@@ -146,6 +148,7 @@ public static class DbSeeder
                 Phone = string.Empty,
                 Role = UserRole.PlatformAdmin,
                 IsActive = true,
+                IsEmailVerified = true,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "Seeder"
             },
@@ -159,6 +162,7 @@ public static class DbSeeder
                 Phone = string.Empty,
                 Role = UserRole.PlatformSuperAdmin,
                 IsActive = true,
+                IsEmailVerified = true,
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "Seeder"
             }

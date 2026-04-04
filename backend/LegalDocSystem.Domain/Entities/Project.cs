@@ -14,8 +14,8 @@ public class Project : BaseEntity
     public string? ClientName { get; set; }
     public string? CaseNumber { get; set; }
     public ProjectStatus Status { get; set; } = ProjectStatus.Intake;
-    public DateTime? StartDate { get; set; }
-    public DateTime? EndDate { get; set; }
+    public DateOnly? StartDate { get; set; }
+    public DateOnly? EndDate { get; set; }
     public string? Tags { get; set; } // JSON array of tags
     
     // Navigation properties

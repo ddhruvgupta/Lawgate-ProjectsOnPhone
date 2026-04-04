@@ -30,7 +30,8 @@ public class UserService : IUserService
                 Phone = u.Phone,
                 Role = u.Role.ToString(),
                 CompanyName = u.Company.Name,
-                IsActive = u.IsActive
+                IsActive = u.IsActive,
+                IsEmailVerified = u.IsEmailVerified
             })
             .ToListAsync();
     }
@@ -103,7 +104,8 @@ public class UserService : IUserService
             Phone = user.Phone,
             Role = user.Role.ToString(),
             CompanyName = user.Company?.Name ?? string.Empty,
-            IsActive = user.IsActive
+            IsActive = user.IsActive,
+            IsEmailVerified = user.IsEmailVerified
         };
     }
 }

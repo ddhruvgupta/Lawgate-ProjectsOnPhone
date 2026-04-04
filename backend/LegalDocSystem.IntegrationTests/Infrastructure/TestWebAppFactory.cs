@@ -3,6 +3,7 @@ using System.Text.Json;
 using DotNet.Testcontainers.Builders;
 using LegalDocSystem.Domain.Entities;
 using LegalDocSystem.Domain.Enums;
+using LegalDocSystem.Infrastructure.BackgroundServices;
 using LegalDocSystem.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -50,10 +51,23 @@ public class TestWebAppFactory : WebApplicationFactory<Program>, IAsyncLifetime
             // Add DbContext pointing to the test container
             services.AddDbContext<ApplicationDbContext>(options =>
                 options.UseNpgsql(_dbContainer.GetConnectionString()));
+
+            // Remove background service — it queries DB before migrations run in tests
+            var cleanupDescriptor = services.SingleOrDefault(
+                d => d.ImplementationType == typeof(DocumentCleanupService));
+            if (cleanupDescriptor != null)
+                services.Remove(cleanupDescriptor);
+
         });
 
         // Override the connection string via WebHostBuilder settings
         builder.UseSetting("ConnectionStrings:DefaultConnection", _dbContainer.GetConnectionString());
+
+        // Inject required JWT settings so the app starts in test mode
+        builder.UseSetting("Jwt:SecretKey", "integration-test-secret-key-minimum-32-chars!");
+        builder.UseSetting("Jwt:Issuer", "LegalDocSystem");
+        builder.UseSetting("Jwt:Audience", "LegalDocSystemUsers");
+        builder.UseSetting("Jwt:ExpiryMinutes", "60");
     }
 
     /// <summary>
@@ -122,6 +136,22 @@ public class TestWebAppFactory : WebApplicationFactory<Program>, IAsyncLifetime
             Phone = "",
             Role = UserRole.CompanyOwner,
             IsActive = true,
+            IsEmailVerified = true,
+            CreatedBy = "TestSetup"
+        });
+
+        // Regular User (no delete permission)
+        db.Users.Add(new User
+        {
+            CompanyId = company.Id,
+            FirstName = "Regular",
+            LastName = "Member",
+            Email = "member@test.com",
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Test@1234"),
+            Phone = "",
+            Role = UserRole.User,
+            IsActive = true,
+            IsEmailVerified = true,
             CreatedBy = "TestSetup"
         });
 
@@ -136,6 +166,7 @@ public class TestWebAppFactory : WebApplicationFactory<Program>, IAsyncLifetime
             Phone = "",
             Role = UserRole.PlatformSuperAdmin,
             IsActive = true,
+            IsEmailVerified = true,
             CreatedBy = "TestSetup"
         });
 

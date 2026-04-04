@@ -7,6 +7,7 @@ export interface User {
   companyId: number;
   phoneNumber?: string;
   isActive: boolean;
+  isEmailVerified: boolean;
 }
 
 /** Must match backend LegalDocSystem.Domain.Enums.UserRole */
@@ -19,15 +20,17 @@ export interface LoginRequest {
 
 export interface RegisterRequest {
   companyName: string;
+  companyEmail: string;
   email: string;
   password: string;
   firstName: string;
   lastName: string;
-  phoneNumber?: string;
+  phone?: string;
 }
 
 export interface TokenResponse {
   token: string;
+  refreshToken: string;
   expiresAt: string;
   user: User;
 }
@@ -45,6 +48,8 @@ export interface AuthContextType {
   login: (email: string, password: string) => Promise<void>;
   register: (data: RegisterRequest) => Promise<void>;
   logout: () => void;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, newPassword: string, confirmPassword: string) => Promise<void>;
   isAuthenticated: boolean;
   isLoading: boolean;
 }

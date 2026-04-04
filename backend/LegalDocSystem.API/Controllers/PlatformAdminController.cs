@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace LegalDocSystem.API.Controllers;
 
+/// <summary>Platform-level administration endpoints. Restricted to PlatformAdmin and PlatformSuperAdmin roles.</summary>
 [ApiController]
 [Route("api/admin")]
 [Authorize(Roles = "PlatformAdmin,PlatformSuperAdmin")]

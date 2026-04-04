@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import React from 'react'
 import type { User, AuthContextType } from '../types/auth'
 
 // We mock the AuthContext module so useAuth returns a controlled user.
 // usePermissions calls useAuth() internally.
-const mockUseAuth = vi.fn<[], AuthContextType>()
+const mockUseAuth = vi.fn<() => AuthContextType>()
 
 vi.mock('../contexts/AuthContext', () => ({
   useAuth: () => mockUseAuth(),
@@ -21,6 +20,8 @@ function makeAuthContext(user: User | null): AuthContextType {
     login: vi.fn(),
     register: vi.fn(),
     logout: vi.fn(),
+    forgotPassword: vi.fn(),
+    resetPassword: vi.fn(),
     isAuthenticated: user !== null,
     isLoading: false,
   }

@@ -6,6 +6,7 @@ using System.Security.Claims;
 
 namespace LegalDocSystem.API.Controllers;
 
+/// <summary>Upload, download, and manage legal documents stored in Azure Blob Storage.</summary>
 [ApiController]
 [Route("api/documents")]
 [Authorize]
@@ -20,6 +21,7 @@ public class DocumentController : ControllerBase
         _auditService = auditService;
     }
 
+    /// <summary>Generates a pre-signed SAS URL for direct client upload to Azure Blob Storage.</summary>
     [HttpPost("upload-url")]
     public async Task<ActionResult<UploadUrlResponse>> GenerateUploadUrl(UploadDocumentDto dto)
     {
@@ -28,6 +30,7 @@ public class DocumentController : ControllerBase
         return Ok(response);
     }
 
+    /// <summary>Confirms that a previously generated upload has completed successfully.</summary>
     [HttpPost("{id}/confirm")]
     public async Task<ActionResult<DocumentDto>> ConfirmUpload(int id)
     {
@@ -47,6 +50,7 @@ public class DocumentController : ControllerBase
         return Ok(document);
     }
 
+    /// <summary>Returns a short-lived SAS download URL for the specified document.</summary>
     [HttpGet("{id}/download-url")]
     public async Task<ActionResult<object>> GetDownloadUrl(int id)
     {

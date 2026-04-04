@@ -6,6 +6,7 @@ using System.Security.Claims;
 
 namespace LegalDocSystem.API.Controllers;
 
+/// <summary>Create and manage legal projects within a company.</summary>
 [ApiController]
 [Route("api/projects")]
 [Authorize]
@@ -20,6 +21,7 @@ public class ProjectController : ControllerBase
         _auditService = auditService;
     }
 
+    /// <summary>Lists all projects visible to the authenticated user.</summary>
     [HttpGet]
     public async Task<ActionResult<IEnumerable<ProjectDto>>> GetProjects()
     {
@@ -31,6 +33,7 @@ public class ProjectController : ControllerBase
         return Ok(projects);
     }
 
+    /// <summary>Returns a single project by ID.</summary>
     [HttpGet("{id}")]
     public async Task<ActionResult<ProjectDto>> GetProject(int id)
     {
@@ -42,6 +45,7 @@ public class ProjectController : ControllerBase
         return Ok(project);
     }
 
+    /// <summary>Creates a new project for the authenticated user's company.</summary>
     [HttpPost]
     public async Task<ActionResult<ProjectDto>> CreateProject(CreateProjectDto dto)
     {

@@ -1,0 +1,155 @@
+@description('Azure region for the App Service')
+param location string
+
+@description('App Service Plan name')
+param appServicePlanName string
+
+@description('Web App name — must be globally unique (becomes <name>.azurewebsites.net)')
+param webAppName string
+
+@description('Application Insights connection string')
+param appInsightsConnectionString string
+
+@description('Key Vault URI — used to build @Microsoft.KeyVault() references in app settings')
+param keyVaultUri string
+
+@description('CORS allowed origin (Static Web App URL)')
+param corsOrigin string
+
+@description('Azure External ID tenant ID — leave empty until setup-external-id.ps1 is run')
+param externalIdTenantId string = ''
+
+@description('Azure External ID API app client ID — leave empty until setup-external-id.ps1 is run')
+param externalIdAudience string = ''
+
+// ---------------------------------------------------------------------------
+// App Service Plan — Linux B1 (upgrade to P1v3 for production traffic)
+// ---------------------------------------------------------------------------
+
+resource appServicePlan 'Microsoft.Web/serverfarms@2024-04-01' = {
+  name: appServicePlanName
+  location: location
+  kind: 'linux'
+  sku: {
+    name: 'B1'
+    tier: 'Basic'
+  }
+  properties: {
+    reserved: true // Required for Linux plans
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helper: Build @Microsoft.KeyVault() reference strings
+// ---------------------------------------------------------------------------
+
+var kvRef = 'https://'  // unused — refs built inline for clarity
+
+// ---------------------------------------------------------------------------
+// Web App — .NET 10 on Linux with system-assigned managed identity
+// ---------------------------------------------------------------------------
+
+resource webApp 'Microsoft.Web/sites@2024-04-01' = {
+  name: webAppName
+  location: location
+  identity: {
+    type: 'SystemAssigned'
+  }
+  properties: {
+    serverFarmId: appServicePlan.id
+    httpsOnly: true
+    siteConfig: {
+      linuxFxVersion: 'DOTNETCORE|10.0'
+      alwaysOn: true
+      ftpsState: 'Disabled'
+      http20Enabled: true
+      minTlsVersion: '1.2'
+      healthCheckPath: '/health'
+      appSettings: [
+        // Application Insights — safe to store directly (not a secret)
+        {
+          name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+          value: appInsightsConnectionString
+        }
+        {
+          name: 'ApplicationInsightsAgent_EXTENSION_VERSION'
+          value: '~3'
+        }
+        // Database connection string via Key Vault reference
+        {
+          name: 'ConnectionStrings__DefaultConnection'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/DatabaseConnectionString/)'
+        }
+        // JWT settings — secret key via Key Vault, non-secret values inline
+        {
+          name: 'Jwt__SecretKey'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/JwtSecretKey/)'
+        }
+        {
+          name: 'Jwt__Issuer'
+          value: 'LegalDocSystem'
+        }
+        {
+          name: 'Jwt__Audience'
+          value: 'LegalDocSystemUsers'
+        }
+        {
+          name: 'Jwt__ExpiryMinutes'
+          value: '1440'
+        }
+        // Azure Blob Storage — connection string via Key Vault reference
+        {
+          name: 'AzureStorage__ConnectionString'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/AzureStorageConnectionString/)'
+        }
+        {
+          name: 'AzureStorage__ContainerName'
+          value: 'legal-documents'
+        }
+        // Azure Communication Services — connection string and sender domain via Key Vault reference
+        {
+          name: 'Email__AcsConnectionString'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/AzureCommunicationServicesConnectionString/)'
+        }
+        {
+          name: 'Email__SenderAddress'
+          value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/AcsSenderDomain/)'
+        }
+        // CORS — allow the Static Web App frontend origin
+        {
+          name: 'Cors__AllowedOrigins__0'
+          value: corsOrigin
+        }
+        // Azure External ID (populated after running setup-external-id.ps1)
+        {
+          name: 'ExternalId__TenantId'
+          value: externalIdTenantId
+        }
+        {
+          name: 'ExternalId__Audience'
+          value: externalIdAudience
+        }
+        // ASP.NET Core
+        {
+          name: 'ASPNETCORE_ENVIRONMENT'
+          value: 'Production'
+        }
+        {
+          name: 'WEBSITE_RUN_FROM_PACKAGE'
+          value: '1'
+        }
+      ]
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Outputs
+// ---------------------------------------------------------------------------
+
+output webAppName string = webApp.name
+output defaultHostname string = webApp.properties.defaultHostName
+output apiUrl string = 'https://${webApp.properties.defaultHostName}'
+
+@description('Principal ID of the system-assigned managed identity — passed to Key Vault module for RBAC')
+output principalId string = webApp.identity.principalId
