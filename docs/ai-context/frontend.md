@@ -1,5 +1,7 @@
 # Claude.ai Long-Term Memory Context - Frontend
 
+> **Companion doc (human-readable):** [`docs/architecture/frontend.md`](../architecture/frontend.md)
+
 ## Frontend Technology Stack
 
 ### Core: React 18 + Vite + TypeScript

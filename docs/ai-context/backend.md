@@ -1,5 +1,7 @@
 # Claude.ai Long-Term Memory Context - Backend
 
+> **Companion doc (human-readable):** [`docs/architecture/backend.md`](../architecture/backend.md)
+
 ## Backend Architecture
 
 ### Technology: .NET 8 Web API

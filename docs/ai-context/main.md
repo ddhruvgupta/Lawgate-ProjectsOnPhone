@@ -1,5 +1,7 @@
 # Main Project Context - Claude.ai Memory
 
+> **Companion doc (human-readable):** [`docs/architecture/architecture.md`](../architecture/architecture.md)
+
 ## 🎯 Project Mission
 
 **Solve the #1 Problem**: Make it EASY to recreate the entire project after 1 year of inactivity.

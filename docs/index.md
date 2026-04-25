@@ -6,58 +6,59 @@
 
 | I want to... | Go to |
 |---|---|
-| Get the project running fast | [quick-start.md](quick-start.md) |
-| Look up a command | [quick-reference.md](quick-reference.md) |
-| Set up my local environment | [environment-setup.md](environment-setup.md) |
-| Understand the architecture | [architecture.md](architecture.md) |
-| See what's done / what's next | [implementation-checklist.md](implementation-checklist.md) |
-| Deploy to Azure | [deployment.md](deployment.md) |
+| Get the project running fast | [guides/quick-start.md](guides/quick-start.md) |
+| Look up a command | [guides/quick-reference.md](guides/quick-reference.md) |
+| Set up my local environment | [guides/environment-setup.md](guides/environment-setup.md) |
+| Understand the architecture | [architecture/architecture.md](architecture/architecture.md) |
+| See what's done / what's next | [tracking/implementation-checklist.md](tracking/implementation-checklist.md) |
+| Deploy to Azure | [guides/deployment.md](guides/deployment.md) |
 
 ---
 
 ## All Documents
 
-### Getting Started
+### `guides/` — Getting Started & Operations
 | File | Description |
 |------|-------------|
-| [quick-start.md](quick-start.md) | One-page guide to get the stack running in minutes |
-| [quick-reference.md](quick-reference.md) | Cheat sheet — common commands, ports, credentials |
-| [environment-setup.md](environment-setup.md) | Full local dev environment setup (prerequisites, config) |
+| [quick-start.md](guides/quick-start.md) | One-page guide to get the stack running in minutes |
+| [quick-reference.md](guides/quick-reference.md) | Cheat sheet — common commands, ports, credentials |
+| [environment-setup.md](guides/environment-setup.md) | Full local dev environment setup (prerequisites, config) |
+| [docker-setup.md](guides/docker-setup.md) | Docker Compose services, commands, troubleshooting |
+| [github-setup.md](guides/github-setup.md) | Repository setup and GitHub project board |
+| [deployment.md](guides/deployment.md) | Full Azure deployment guide with cost estimates |
 
-### Architecture & Design
+### `architecture/` — Design & Technical Reference
 | File | Description |
 |------|-------------|
-| [architecture.md](architecture.md) | System design, data model, technology decisions |
-| [backend.md](backend.md) | Backend API — controllers, services, migrations, config |
-| [frontend.md](frontend.md) | Frontend — pages, components, routing, state management |
-| [database.md](database.md) | Database operations, recreation script, backup/restore |
-| [schema-changelog.md](schema-changelog.md) | Migration history (v1.0 – v1.4) |
+| [architecture.md](architecture/architecture.md) | System design, data model, technology decisions |
+| [backend.md](architecture/backend.md) | Backend API — controllers, services, migrations, config |
+| [frontend.md](architecture/frontend.md) | Frontend — pages, components, routing, state management |
+| [database.md](architecture/database.md) | Database operations, recreation script, backup/restore |
+| [schema-changelog.md](architecture/schema-changelog.md) | Migration history (v1.0 – v1.4) |
 
-### Operations
+### `testing/` — Testing
 | File | Description |
 |------|-------------|
-| [docker-setup.md](docker-setup.md) | Docker Compose services, commands, troubleshooting |
-| [testing-guide.md](testing-guide.md) | Manual testing procedures for all major flows |
-| [test-results.md](test-results.md) | Infrastructure validation test results |
-| [github-setup.md](github-setup.md) | Repository setup and GitHub project board |
-| [deployment.md](deployment.md) | Full Azure deployment guide with cost estimates |
+| [testing.md](testing/testing.md) | Test suites overview and how to run them |
+| [testing-guide.md](testing/testing-guide.md) | Manual testing procedures for all major flows |
+| [test-results.md](testing/test-results.md) | Infrastructure validation test results |
 
-### Progress Tracking
+### `tracking/` — Progress
 | File | Description |
 |------|-------------|
-| [implementation-checklist.md](implementation-checklist.md) | Phase-by-phase checklist — **current phase: 7** |
+| [implementation-checklist.md](tracking/implementation-checklist.md) | Phase-by-phase checklist — **current phase: 7** |
 
-### AI Context Files
-> Context files for AI assistants — loaded at the start of each session.
+### `ai-context/` — AI Agent Context Files
+> Deep context for AI agents — load the relevant file before starting work on that layer.
 
-| File | Scope |
-|------|-------|
-| [ai-context/main.md](ai-context/main.md) | Full project overview |
-| [ai-context/backend.md](ai-context/backend.md) | Backend-specific patterns and conventions |
-| [ai-context/frontend.md](ai-context/frontend.md) | Frontend-specific patterns and conventions |
-| [ai-context/database.md](ai-context/database.md) | Database conventions and recovery procedures |
+| File | Scope | Companion doc |
+|------|-------|---------------|
+| [ai-context/main.md](ai-context/main.md) | Full project overview | [architecture/architecture.md](architecture/architecture.md) |
+| [ai-context/backend.md](ai-context/backend.md) | Backend patterns and conventions | [architecture/backend.md](architecture/backend.md) |
+| [ai-context/frontend.md](ai-context/frontend.md) | Frontend patterns and conventions | [architecture/frontend.md](architecture/frontend.md) |
+| [ai-context/database.md](ai-context/database.md) | Database conventions and recovery | [architecture/database.md](architecture/database.md) |
 
-### Archive
+### `archive/`
 > Historical event-log documents kept for reference. Not maintained going forward.
 
 | File | Description |
