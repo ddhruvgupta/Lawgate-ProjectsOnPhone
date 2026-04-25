@@ -305,7 +305,7 @@ Use this checklist to track your progress in implementing the full application.
 - [ ] Refactor code as needed
 
 ### Technical Debt
-- [ ] Fix `IBlobStorageService` interface — `GetSasUri` parameter uses `Azure.Storage.Sas.BlobSasPermissions` (Azure SDK type leaking into Application layer). Replace with a provider-agnostic `StorageAccessPermissions` enum so the interface is truly cloud-independent. See `docs/architecture/storage-provider-decision.md` for context.
+- [x] Fix `IBlobStorageService` interface — `GetSasUri` parameter now uses `StorageAccessPermissions` enum (defined in `LegalDocSystem.Domain.Enums`). Removed `Azure.Storage.Sas.BlobSasPermissions` from Application layer entirely. `AzureBlobStorageService` maps the enum to Azure's type internally. `Azure.Storage.Blobs` NuGet package removed from `LegalDocSystem.Application.csproj`. Config key renamed from `AzureStorage` → `BlobStorage` in both `appsettings.json` files. See `docs/architecture/storage-provider-decision.md` for context.
 
 ## Important Reminders
 
