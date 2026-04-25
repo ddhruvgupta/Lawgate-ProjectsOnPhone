@@ -5,7 +5,6 @@ using LegalDocSystem.Domain.Enums;
 using LegalDocSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
-using Azure.Storage.Sas;
 
 namespace LegalDocSystem.Infrastructure.Services
 {
@@ -49,7 +48,7 @@ namespace LegalDocSystem.Infrastructure.Services
             string blobName = $"{dto.ProjectId}/{Guid.NewGuid()}_{dto.FileName}";
 
             // Generate Write SAS URL
-            string uploadUrl = _blobStorageService.GetSasUri(blobName, containerName, BlobSasPermissions.Create | BlobSasPermissions.Write, 15);
+            string uploadUrl = _blobStorageService.GetSasUri(blobName, containerName, StorageAccessPermissions.Create | StorageAccessPermissions.Write, 15);
 
             // Create Pending Document Entity
             var document = new Document
@@ -142,7 +141,7 @@ namespace LegalDocSystem.Infrastructure.Services
             if (document.Project.CompanyId != user.CompanyId)
                 throw new UnauthorizedAccessException("Access to this document is not allowed");
 
-            return _blobStorageService.GetSasUri(document.BlobStoragePath, document.BlobContainerName, BlobSasPermissions.Read, 10);
+            return _blobStorageService.GetSasUri(document.BlobStoragePath, document.BlobContainerName, StorageAccessPermissions.Read, 10);
         }
 
         public async Task<DocumentDto> GetDocumentAsync(int documentId, int userId)

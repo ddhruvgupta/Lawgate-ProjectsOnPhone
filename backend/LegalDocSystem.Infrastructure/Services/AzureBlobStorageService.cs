@@ -1,6 +1,7 @@
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using LegalDocSystem.Application.Interfaces;
+using LegalDocSystem.Domain.Enums;
 using Microsoft.Extensions.Configuration;
 
 namespace LegalDocSystem.Infrastructure.Services
@@ -11,8 +12,8 @@ namespace LegalDocSystem.Infrastructure.Services
 
         public AzureBlobStorageService(IConfiguration configuration)
         {
-            _connectionString = configuration.GetConnectionString("AzureStorage") 
-                ?? throw new ArgumentNullException("AzureStorage connection string is missing");
+            _connectionString = configuration.GetConnectionString("BlobStorage")
+                ?? throw new ArgumentNullException("BlobStorage connection string is missing");
         }
 
         public async Task<string> UploadAsync(Stream content, string fileName, string containerName)
@@ -50,7 +51,7 @@ namespace LegalDocSystem.Infrastructure.Services
             await blobClient.DeleteIfExistsAsync();
         }
 
-        public string GetSasUri(string fileName, string containerName, BlobSasPermissions permissions, int expirationMinutes = 60)
+        public string GetSasUri(string fileName, string containerName, StorageAccessPermissions permissions, int expirationMinutes = 60)
         {
             var containerClient = new BlobContainerClient(_connectionString, containerName);
             var blobClient = containerClient.GetBlobClient(fileName);
@@ -68,9 +69,19 @@ namespace LegalDocSystem.Infrastructure.Services
                 ExpiresOn = DateTimeOffset.UtcNow.AddMinutes(expirationMinutes)
             };
 
-            sasBuilder.SetPermissions(permissions);
+            sasBuilder.SetPermissions(MapPermissions(permissions));
 
             return blobClient.GenerateSasUri(sasBuilder).ToString();
+        }
+
+        private static BlobSasPermissions MapPermissions(StorageAccessPermissions permissions)
+        {
+            BlobSasPermissions result = 0;
+            if (permissions.HasFlag(StorageAccessPermissions.Read))   result |= BlobSasPermissions.Read;
+            if (permissions.HasFlag(StorageAccessPermissions.Write))  result |= BlobSasPermissions.Write;
+            if (permissions.HasFlag(StorageAccessPermissions.Create)) result |= BlobSasPermissions.Create;
+            if (permissions.HasFlag(StorageAccessPermissions.Delete)) result |= BlobSasPermissions.Delete;
+            return result;
         }
 
         public async Task<long> GetBlobSizeAsync(string fileName, string containerName)
