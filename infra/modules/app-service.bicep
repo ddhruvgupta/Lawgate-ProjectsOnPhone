@@ -91,13 +91,14 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
           name: 'Jwt__ExpiryMinutes'
           value: '1440'
         }
-        // Azure Blob Storage — connection string via Key Vault reference
+        // Blob Storage — connection string via Key Vault reference
+        // Config key matches ConnectionStrings:BlobStorage in appsettings.json
         {
-          name: 'AzureStorage__ConnectionString'
+          name: 'ConnectionStrings__BlobStorage'
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/AzureStorageConnectionString/)'
         }
         {
-          name: 'AzureStorage__ContainerName'
+          name: 'BlobStorage__ContainerName'
           value: 'legal-documents'
         }
         // Azure Communication Services — connection string and sender domain via Key Vault reference

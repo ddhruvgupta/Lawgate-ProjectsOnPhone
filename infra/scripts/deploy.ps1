@@ -203,8 +203,11 @@ if (-not $SkipBicep) {
     $script:ApiUrl               = $deployOutput.apiUrl.value
     $script:FrontendUrl          = $deployOutput.frontendUrl.value
     $script:DbServerFqdn         = $deployOutput.databaseServerFqdn.value
-    $script:StaticWebAppToken    = $deployOutput.staticWebAppDeploymentToken.value
     $script:StorageAccountName   = $deployOutput.storageAccountName.value
+
+    # Retrieve the SWA deployment token securely (intentionally not in Bicep outputs)
+    $swaName = az staticwebapp list --resource-group $ResourceGroup --query '[0].name' -o tsv
+    $script:StaticWebAppToken = az staticwebapp secrets list --name $swaName --query 'properties.apiKey' -o tsv
 
     Write-Host ""
     Write-Host "  Bicep deployment complete:" -ForegroundColor Green
@@ -225,8 +228,10 @@ if (-not $SkipBicep) {
         $script:ApiUrl            = $deployOutput.apiUrl.value
         $script:FrontendUrl       = $deployOutput.frontendUrl.value
         $script:DbServerFqdn      = $deployOutput.databaseServerFqdn.value
-        $script:StaticWebAppToken = $deployOutput.staticWebAppDeploymentToken.value
         $script:StorageAccountName= $deployOutput.storageAccountName.value
+        # Retrieve the SWA deployment token securely (intentionally not in Bicep outputs)
+        $swaName = az staticwebapp list --resource-group $ResourceGroup --query '[0].name' -o tsv
+        $script:StaticWebAppToken = az staticwebapp secrets list --name $swaName --query 'properties.apiKey' -o tsv
         Write-Host "    API URL   : $($script:ApiUrl)"
         Write-Host "    Frontend  : $($script:FrontendUrl)"
     } else {
