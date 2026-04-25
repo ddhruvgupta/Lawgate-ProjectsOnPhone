@@ -4,8 +4,8 @@
 
 | Suite | Framework | Location | Tests |
 |-------|-----------|----------|-------|
-| Backend unit tests | xUnit + EF Core InMemory | `backend/LegalDocSystem.UnitTests/` | 29 |
-| Backend integration tests | xUnit + Testcontainers | `backend/LegalDocSystem.IntegrationTests/` | 29 |
+| Backend unit tests | xUnit + EF Core InMemory | `backend/LegalDocSystem.UnitTests/` | 52 |
+| Backend integration tests | xUnit + Testcontainers | `backend/LegalDocSystem.IntegrationTests/` | 57 |
 | Frontend tests | Vitest + React Testing Library | `frontend/src/` | 43 |
 
 ---
@@ -27,8 +27,8 @@ dotnet test LegalDocSystem.UnitTests
 
 | Test class | Tests |
 |------------|-------|
-| `AuthServiceTests` | Login (valid, wrong password, unknown, unverified, inactive); refresh token; forgot/reset password; email verification; resend verification (20 tests) |
-| `ProjectServiceTests` | Create; list scoped to company; update/delete missing project throws (4 tests) |
+| `AuthServiceTests` | Register (company created, user created, role, email unverified, hashed password, token returned, email sent, null phone, duplicate company email, duplicate user email); login (valid, wrong password, unknown, unverified, inactive); refresh token (invalid, expired); forgot/reset password; email verification; resend verification (31 tests) |
+| `ProjectServiceTests` | GetProjects (empty, company isolation, descending order, document count); GetProject (valid, 404, wrong company 404); CreateProject (all fields, DateOnly dates, null dates, status); UpdateProject (all fields + audit, 404, wrong company 404); DeleteProject (removes from DB, 404, wrong company 404) (17 tests) |
 | `UserServiceTests` | List scoped to company; duplicate email; hashed password; toggle active (4 tests) |
 
 ---
@@ -60,8 +60,8 @@ dotnet test LegalDocSystem.IntegrationTests
 
 | Test class | Tests |
 |------------|-------|
-| `AuthControllerTests` | Login; refresh token; forgot/reset password; verify email; resend verification (15 tests) |
-| `ProjectControllerTests` | List; get by id; 404 for missing; create; update; delete (6 tests) |
+| `AuthControllerTests` | Register (200+token, persists user, email unverified, trial company, with/without phone, missing fields 400, invalid email 400, short password 400, duplicate emails 400); login; refresh token; forgot/reset password; verify email; resend verification (29 tests) |
+| `ProjectControllerTests` | Auth (401 without token on all mutations); get list; get by id; get 404; get correct fields; create minimal/full/with-dates; create missing name 400; create writes audit log; update 200; update 404; update missing name 400; update clears dates; delete 204; delete then 404; delete 404; delete as User 403 (20 tests) |
 | `UserControllerTests` | List; get; create; toggle active (4 tests) |
 | `PlatformAdminControllerTests` | SuperAdmin can list/get companies; CompanyOwner gets 403 (4 tests) |
 
@@ -69,8 +69,9 @@ dotnet test LegalDocSystem.IntegrationTests
 
 | Email | Password | Role |
 |-------|----------|------|
-| owner@test.com | Test@1234 | CompanyOwner |
-| superadmin@lawgate.com | Admin@1234 | PlatformSuperAdmin |
+| `owner@test.com` | `Test@1234` | CompanyOwner |
+| `member@test.com` | `Test@1234` | User |
+| `superadmin@lawgate.com` | `Admin@1234` | PlatformSuperAdmin |
 
 ---
 

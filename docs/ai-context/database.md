@@ -1,4 +1,6 @@
-# Claude.ai Long-Term Memory Context
+# Claude.ai Long-Term Memory Context - Database
+
+> **Companion doc (human-readable):** [`docs/architecture/database.md`](../architecture/database.md)
 
 ## Project: Lawgate Enterprise Application
 

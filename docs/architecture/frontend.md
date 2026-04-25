@@ -24,25 +24,27 @@ React 19 application with Vite, Tailwind CSS 4, TypeScript, and modern developme
 
 | Component | Description |
 |-----------|-------------|
-| `Layout` | Main app shell with sidebar navigation |
+| `Layout` | Main app shell with sidebar navigation and dark mode toggle |
 | `ProtectedRoute` | Redirects unauthenticated users to `/login` |
 | `RoleGuard` | Renders children only for allowed roles (`allowedRoles` prop) |
+| `ErrorBoundary` | React error boundary wrapping all protected routes; shows retry/refresh UI |
+| `LoadingSkeleton` / `CardSkeleton` | Animated placeholder components for loading states |
 | `ProjectStatusBadge` | Colour-coded badge for ProjectStatus enum |
-| `ToastContainer` | Renders active toast notifications |
+| `ToastContainer` | Renders active toast notifications (`aria-live="polite"`) |
 
 ## Contexts
 
 | Context | Provider | Purpose |
 |---------|----------|---------|
-| `AuthContext` | `AuthProvider` | Auth state — user, login(), logout(), token refresh |
+| `AuthContext` | `AuthProvider` | Auth state — user, login(), logout(), forgotPassword(), resetPassword(), token refresh |
 | `ToastContext` | `ToastProvider` | Toast notification queue — show/dismiss |
 
 ## Project Structure
 ```
 frontend/
 ├── src/
-│   ├── components/      # Layout, ProtectedRoute, RoleGuard, ProjectStatusBadge, ToastContainer
-│   ├── pages/           # 9 page components (see routing table above)
+│   ├── components/      # Layout, ProtectedRoute, RoleGuard, ErrorBoundary, LoadingSkeleton, ProjectStatusBadge, ToastContainer
+│   ├── pages/           # 12 page components (see routing table above)
 │   ├── services/        # api.ts (Axios instance + interceptors)
 │   ├── hooks/           # Custom React hooks
 │   ├── contexts/        # AuthContext, ToastContext
@@ -135,9 +137,11 @@ npm test
 ### Environment Variables
 Create `.env.local`:
 ```env
-VITE_API_URL=http://localhost:5000/api
+VITE_API_URL=http://localhost:5059/api
 VITE_APP_NAME=Lawgate
 ```
+
+> In the current setup, the frontend uses `http://localhost:5059/api` for API requests, including when running with Docker Compose, because the browser connects through the host-mapped API port. Do not switch this to an internal Docker service name unless you are explicitly building the client with a browser-reachable hostname.
 
 ### API Configuration
 File: `src/services/api.ts`
@@ -539,6 +543,14 @@ npm run type-check
 npm update
 ```
 
+## Dark Mode
+
+Implemented via Tailwind's `darkMode: 'class'` strategy:
+
+- **`useDarkMode` hook** (`src/hooks/useDarkMode.ts`) — reads/writes `'dark'` class on `<html>`, persists to `localStorage`, respects `prefers-color-scheme` OS preference on first visit
+- **Toggle button** in the `Layout` sidebar — switches between light and dark
+- All pages use Tailwind `dark:` variants for background, text, and border colours
+
 ## VS Code Extensions (Recommended)
 - ESLint
 - Prettier
@@ -548,7 +560,6 @@ npm update
 
 ## Documentation Updates
 When adding features:
-1. Update this README
-2. Update component documentation
-3. Update `claude.md` for context
-4. Add inline code comments
+1. Update this file (`docs/frontend.md`)
+2. Update `docs/ai-context/frontend.md` for AI context
+3. Add inline code comments

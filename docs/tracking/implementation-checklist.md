@@ -101,7 +101,7 @@ Use this checklist to track your progress in implementing the full application.
 - [x] Create Document controller
 - [x] Create Audit controller
 - [x] Create Platform Admin controller
-- [ ] Create Role controller
+- [x] Create Role controller
 - [x] Add health check endpoint
 - [x] Implement authorization policies
 - [x] Add input validation (DTO validation attributes: `[Required]`, `[EmailAddress]`, `[MinLength]`, `[Phone]` on all auth DTOs)
@@ -125,9 +125,9 @@ Use this checklist to track your progress in implementing the full application.
 
 ### Documentation
 - [x] Document current schema in `database/docs/schema-changelog.md`
-- [ ] Update connection strings in docs
-- [ ] Add backup/restore procedures
-- [ ] Document all seed data
+- [x] Update connection strings in docs
+- [x] Add backup/restore procedures
+- [x] Document all seed data
 
 ## Phase 5: Integration & Testing
 
@@ -147,10 +147,10 @@ Use this checklist to track your progress in implementing the full application.
 - [x] Test container networking
 
 ### Testing Setup
-- [x] Setup backend unit tests (xUnit) — 29 tests, all passing
-- [ ] Setup frontend unit tests (Vitest)
-- [ ] Create sample tests
-- [ ] Setup integration tests (optional)
+- [x] Setup backend unit tests (xUnit) — 52 tests, all passing
+- [x] Setup frontend unit tests (Vitest) — 43 tests, all passing
+- [x] Create sample tests
+- [x] Setup integration tests — 57 tests, all passing (xUnit + Testcontainers)
 - [ ] Setup E2E tests with Playwright (optional)
 
 ## Phase 6: Advanced Features ✅ COMPLETE
@@ -199,7 +199,7 @@ Use this checklist to track your progress in implementing the full application.
 - [x] **`UserDto` includes `IsEmailVerified`** — Returned in every token response; frontend shows a warning banner on dashboard and a resend link on login when unverified.
 - [x] **JWT secret removed from appsettings.json** — `SecretKey` is now empty in `appsettings.json`; populated via user-secrets/Key Vault; startup throws `InvalidOperationException` if missing.
 - [x] **SmtpEmailService dead code removed** — File deleted; `AcsEmailService` is the sole email implementation.
-- [ ] **SmtpEmailService is orphaned dead code** — Replace with ACS was done but the file `SmtpEmailService.cs` was not removed. Delete it to avoid confusion.
+- [x] **SmtpEmailService dead code removed** — File deleted; `AcsEmailService` (prod) and `ConsoleEmailService` (dev) are the sole implementations.
 
 ## Phase 7: Azure Deployment Preparation
 
@@ -304,6 +304,9 @@ Use this checklist to track your progress in implementing the full application.
 - [ ] Add new features based on feedback
 - [ ] Refactor code as needed
 
+### Technical Debt
+- [ ] Fix `IBlobStorageService` interface — `GetSasUri` parameter uses `Azure.Storage.Sas.BlobSasPermissions` (Azure SDK type leaking into Application layer). Replace with a provider-agnostic `StorageAccessPermissions` enum so the interface is truly cloud-independent. See `docs/architecture/storage-provider-decision.md` for context.
+
 ## Important Reminders
 
 ### Security
@@ -340,44 +343,43 @@ Use this section to track your progress:
 
 **Started**: 2025-01-20
 
-**Last Updated**: 2026-03-27
+**Last Updated**: 2026-04-04
 
 **Target Completion**: TBD
 
-**Recently Completed** (March 2026 — Phase 6 completion):
+**Recently Completed** (April 2026):
+- Project `StartDate`/`EndDate` changed from `timestamp with time zone` → `date` (DateOnly); migration `20260403210848_ChangeProjectDatesToDateOnly`
+- Unit tests expanded: 52 total (was 29) — full coverage for RegisterAsync (10 new), ProjectService (17, was 4)
+- Integration tests expanded: 57 total (was 29) — full coverage for register endpoint (14 new), ProjectController (20, was 6)
+- `TestWebAppFactory` seeds `member@test.com` (User role) for 403 role-based delete test
+- All 3 remaining Copilot PR #33 feedback items resolved (unused `kvRef` in Bicep, Static Web App deployment token removed from outputs)
+
+**Recently Completed** (March 2026 — Phase 6):
 - Email verification: `IsEmailVerified`, `EmailVerificationToken`, `EmailVerificationTokenExpiry` on User; migration `20260408000000_AddEmailVerification`
 - Password reset: `ForgotPasswordAsync`, `ResetPasswordAsync` in AuthService + controller endpoints
 - Refresh token: `RefreshTokenAsync` with atomic rotation (SHA-256 hashed, prevents replay attacks)
-- `IEmailService` + `ConsoleEmailService` (logs to console + `logs/emails/` files)
+- `IEmailService` + `ConsoleEmailService` (logs to console + `logs/emails/` files); `AcsEmailService` for Production
 - Rate limiting: `FixedWindowLimiter` on auth (10/min) and global (100/min)
 - Security headers middleware: CSP, X-Frame-Options, Referrer-Policy, CORP, Permissions-Policy
 - Input sanitization middleware: strips HTML/script from all JSON request bodies
 - In-memory caching: `IMemoryCache` on `CompanyService` (5-min TTL, cache-busting on update)
 - API XML documentation: `GenerateDocumentationFile=true` in .csproj; comments on all 7 controllers; wired into Swagger
-- Dark mode: Tailwind `darkMode: 'class'`; `useDarkMode` hook (persists to localStorage, respects OS preference); toggle button in Layout sidebar
-- Accessibility: `role="alert"` on error divs; `aria-live="polite"` on toast container; `aria-label` on icon-only buttons; `<html lang="en">` with proper page title and meta description
+- Dark mode: Tailwind `darkMode: 'class'`; `useDarkMode` hook (persists to localStorage, respects OS preference)
+- Accessibility: `role="alert"` on error divs; `aria-live="polite"` on toast container; `aria-label` on icon-only buttons
 - Frontend pages: `ForgotPasswordPage`, `ResetPasswordPage`, `VerifyEmailPage`
 - Frontend routes: `/forgot-password`, `/reset-password`, `/verify-email`
-- Unit tests: 28 tests (was 4) — fixed broken constructor, added tests for all new auth methods
-- Integration tests: 15 tests (was 3) — added for refresh token, forgot password, reset password, verify email, resend verification
-
-**Notes**:
-- Auth is fully done (login, register, JWT, BCrypt).
-- All core CRUD controllers and services are implemented.
-- Azure Blob Storage integration is wired up (needs real connection string in secrets).
-- Basic frontend structure is done but missing utilities/hooks/packages.
-- Backend needs: DbSeeder, error handling middleware, input validation.
-- Frontend needs: React Query, Hook Form, Zod, Heroicons, Headless UI, layout components.
+- Azure IaC: full Bicep modules for App Service, PostgreSQL, Key Vault, Storage, ACS, Static Web App, Monitoring
 
 **Blockers**:
 - None currently.
 
-**Next Steps**:
-1. Install missing frontend packages (`react-hook-form`, `zod`, `@tanstack/react-query`, `@headlessui/react`, `@heroicons/react`, `clsx`).
-2. Create `src/hooks/` and `src/utils/` directories and base layout component.
-3. Create `DbSeeder.cs` to seed default roles and a test CompanyOwner user.
-4. Add global error handling middleware to the API.
-5. Run end-to-end integration test: register → login → API call with JWT.
+**Next Steps** (Phase 7):
+1. Provision Azure resources using `infra/main.bicep` (see `infra/README.md`)
+2. Store ACS connection string + sender domain in Key Vault → verify real emails send in Production
+3. Apply EF Core migrations to Azure PostgreSQL
+4. Deploy backend to Azure App Service; configure managed identity + Key Vault references
+5. Deploy frontend to Azure Static Web Apps; retrieve deployment token via `az staticwebapp secrets list`
+6. Configure GitHub Actions CI/CD workflows (Phase 8)
 
 ---
 

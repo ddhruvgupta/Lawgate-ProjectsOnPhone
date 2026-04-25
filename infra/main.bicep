@@ -46,7 +46,8 @@ var namePrefix = '${appName}-${environment}'
 // Key Vault name pre-computed so app-service.bicep can reference it without
 // waiting for the Key Vault module to deploy (avoids a circular dependency)
 var keyVaultName = 'lg-kv-${take(suffix, 10)}'
-var keyVaultUri = 'https://${keyVaultName}.vault.azure.net/'
+// Use environment() to avoid hardcoded cloud URLs (supports sovereign clouds)
+var keyVaultUri = 'https://${keyVaultName}.${az.environment().suffixes.keyvaultDns}/'
 
 // ===========================================================================
 // Modules
@@ -116,15 +117,32 @@ module appService 'modules/app-service.bicep' = {
   }
 }
 
-// --- Communication Services (no dependencies) --------------------------------
+// --- Communication Services (existing — already provisioned in this resource group) -------
+// lawgate-prod-acs and lawgate-prod-acs-email were created manually before the IaC was written.
+// Referencing them here avoids creating duplicate resources. If you ever need to recreate
+// them via IaC, delete these existing references and uncomment the module block below.
 
-module communication 'modules/communication.bicep' = {
-  name: 'communication'
-  params: {
-    communicationServiceName: '${namePrefix}-acs-${take(suffix, 6)}'
-    dataLocation: 'India'
-  }
+resource existingAcs 'Microsoft.Communication/communicationServices@2023-04-01' existing = {
+  name: 'lawgate-prod-acs'
 }
+
+resource existingEmailService 'Microsoft.Communication/emailServices@2023-04-01' existing = {
+  name: 'lawgate-prod-acs-email'
+}
+
+resource existingManagedDomain 'Microsoft.Communication/emailServices/domains@2023-04-01' existing = {
+  parent: existingEmailService
+  name: 'AzureManagedDomain'
+}
+
+// Uncomment to recreate ACS from scratch (only if existing resources above are deleted first):
+// module communication 'modules/communication.bicep' = {
+//   name: 'communication'
+//   params: {
+//     communicationServiceName: '${namePrefix}-acs-${take(suffix, 6)}'
+//     dataLocation: 'India'
+//   }
+// }
 
 // --- Key Vault (depends on: database, storage, appService, communication) ----
 // Deployed last so it has the App Service principal ID for RBAC assignment
@@ -139,8 +157,8 @@ module keyvault 'modules/keyvault.bicep' = {
     jwtSecretKey: jwtSecretKey
     storageAccountName: storage.outputs.storageAccountName
     appServicePrincipalId: appService.outputs.principalId
-    communicationServiceConnectionString: communication.outputs.primaryConnectionString
-    acsSenderDomain: communication.outputs.senderDomain
+    communicationServiceConnectionString: existingAcs.listKeys().primaryConnectionString
+    acsSenderDomain: existingManagedDomain.properties.mailFromSenderDomain
   }
 }
 
@@ -164,7 +182,7 @@ output databaseServerFqdn string = database.outputs.serverFqdn
 output storageAccountName string = storage.outputs.storageAccountName
 
 @description('Azure Communication Services resource name')
-output communicationServiceName string = communication.outputs.communicationServiceName
+output communicationServiceName string = existingAcs.name
 
 @description('App Insights connection string (safe — not a secret)')
 output appInsightsConnectionString string = monitoring.outputs.appInsightsConnectionString

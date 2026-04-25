@@ -32,9 +32,11 @@ All core entities in Clean Architecture structure:
 ## Version 1.1.0 - Add Document Status (2026-01-25)
 
 ### Columns Added
-- **Documents**: `Status` (enum: Pending / Confirmed)
+- **Documents**: `Status` (enum: Pending / Active / Scanning / Failed)
   - Pending = upload URL generated but not yet confirmed
-  - Confirmed = client confirmed file uploaded to Azure Blob Storage
+  - Active = file uploaded and confirmed available
+  - Scanning = file uploaded but undergoing security scan
+  - Failed = upload failed or file was rejected (e.g. size mismatch)
 
 ### Migration
 `20260125031050_AddDocumentStatus`
@@ -69,11 +71,43 @@ Enables stateless JWT refresh flow: client posts expired access token + refresh 
 
 ### Enum Updated
 - **ProjectStatus** values changed from `Planning / Active / OnHold / Completed / Cancelled / Archived`
-  to `Intake / InProgress / Legal / Completed / Closed`
-  Reflects the actual legal case workflow stages.
+  to `Intake / Active / Discovery / Negotiation / Hearing / OnHold / Settled / Closed / Archived`
+  Reflects a full legal matter lifecycle.
 
 ### Migration
 `20260325234043_UpdateProjectStatusToLegal`
+
+---
+
+## Version 1.5.0 - Project Dates as DateOnly (2026-04-03)
+
+### Columns Modified
+- **Projects**: `StartDate` changed from `timestamp with time zone` (nullable) to `date` (nullable)
+- **Projects**: `EndDate` changed from `timestamp with time zone` (nullable) to `date` (nullable)
+
+### Notes
+PostgreSQL `timestamp with time zone` requires a UTC `DateTimeKind` — dates without times caused a `Cannot write DateTime with Kind=Unspecified` error. `date` columns map cleanly to .NET `DateOnly`, removing timezone ambiguity entirely. Corresponding entity, DTO, and service changes applied simultaneously.
+
+### Migration
+`20260403210848_ChangeProjectDatesToDateOnly`
+
+---
+
+## Version 1.6.0 - Email Verification & Password Reset Fields (2026-04-08)
+
+### Columns Added
+- **Users**: `IsEmailVerified` (bool, default false) — login is blocked until true
+- **Users**: `EmailVerificationToken` (string, nullable) — SHA-256 hashed token sent in verification email
+- **Users**: `EmailVerificationTokenExpiry` (DateTime, nullable) — token TTL
+- **Users**: `PasswordResetToken` (string, nullable) — SHA-256 hashed token sent in reset email
+- **Users**: `PasswordResetTokenExpiry` (DateTime, nullable) — token TTL
+
+### Notes
+Enables the full forgot-password / reset-password / verify-email / resend-verification flow.
+`DbSeeder` sets `IsEmailVerified = true` on all seed users so development login is unblocked.
+
+### Migration
+`20260408000000_AddEmailVerification`
 
 ---
 

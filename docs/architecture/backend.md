@@ -16,9 +16,10 @@
 | Audit logging | ✅ Complete |
 | Document versioning | ✅ Complete |
 | Background services | ✅ Complete |
-| Database migrations (5) | ✅ Complete |
+| Database migrations (7) | ✅ Complete |
 | Development seed data | ✅ Complete |
-| Unit tests (29 passing) | ✅ Complete |
+| Unit tests (52 passing) | ✅ Complete |
+| Integration tests (57 passing) | ✅ Complete |
 | Email verification / password reset | ✅ Complete |
 | Rate limiting | ✅ Complete |
 
@@ -41,8 +42,8 @@ backend/
 │   ├── BackgroundServices/        # DocumentCleanupService
 │   └── Migrations/                # EF Core migration history (5 migrations)
 ├── LegalDocSystem.API/            # Web API entry point
-│   ├── Controllers/               # 8 controllers
-│   ├── Middleware/                 # GlobalExceptionMiddleware
+│   ├── Controllers/               # 7 controllers
+│   ├── Middleware/                 # GlobalExceptionMiddleware, SecurityHeadersMiddleware, InputSanitizationMiddleware
 │   ├── Program.cs                 # DI registration, middleware pipeline
 │   └── appsettings.json           # Configuration template
 ├── LegalDocSystem.UnitTests/
@@ -89,11 +90,12 @@ dotnet test
 ```
 
 ### Access Points (Development)
-| Endpoint | URL |
-|----------|-----|
-| API Base | http://localhost:5059/api |
-| Swagger UI | http://localhost:5059/swagger |
-| Health Check | http://localhost:5059/health |
+
+| Endpoint | Local (dotnet run) | Docker |
+|----------|--------------------|--------|
+| API Base | http://localhost:5059/api | http://localhost:5059/api |
+| Swagger UI | http://localhost:5059/swagger | http://localhost:5059/swagger |
+| Health Check | http://localhost:5059/health | http://localhost:5059/health |
 
 ---
 
@@ -170,10 +172,11 @@ dotnet test
 
 ### Enums
 - `UserRole`: CompanyOwner, Admin, User, Viewer, PlatformAdmin, PlatformSuperAdmin
-- `ProjectStatus`: Intake, InProgress, Legal, Completed, Closed
-- `DocumentType`: Contract, Brief, Motion, Pleading, Exhibit, Amendment, Correspondence, Other
+- `ProjectStatus`: Intake, Active, Discovery, Negotiation, Hearing, OnHold, Settled, Closed, Archived
+- `DocumentType`: Contract, Brief, Motion, Pleading, Agreement, Evidence, Correspondence, Research, Other
+- `DocumentStatus`: Pending, Active, Scanning, Failed
 - `SubscriptionTier`: Trial (14 days / 10 GB), Basic, Professional, Enterprise
-- `PermissionLevel`: Viewer, Editor, Manager
+- `PermissionLevel`: None, Viewer, Commenter, Editor, Admin
 
 ---
 
@@ -185,10 +188,11 @@ All registered as **scoped** services in DI:
 |---------|---------------|
 | `JwtTokenService` | Create/validate JWT tokens, extract claims |
 | `AuthService` | Register, login, refresh token, email verify, password reset |
-| `AcsEmailService` | Send transactional email via Azure Communication Services |
+| `AcsEmailService` | Send transactional email via Azure Communication Services (Production) |
+| `ConsoleEmailService` | Log emails to console + `logs/emails/` files (Development) |
 | `AzureBlobStorageService` | Generate SAS upload/download URLs, delete blobs |
 | `DocumentService` | Document CRUD, confirm upload, versioning |
-| `CompanyService` | Company CRUD |
+| `CompanyService` | Company CRUD with 5-min IMemoryCache (cache-busting on update) |
 | `UserService` | User CRUD, activate/deactivate |
 | `ProjectService` | Project CRUD with multi-tenant CompanyId filter |
 | `AuditService` | Log actions with full context (IP, user agent, old/new values) |
@@ -232,7 +236,9 @@ dotnet ef migrations script \
 | 2 | `AddDocumentStatus` — Added DocumentStatus enum column | 2026-01-25 |
 | 3 | `AddRefreshTokenToUser` — Added RefreshToken, RefreshTokenExpiry to Users | 2026-03-25 |
 | 4 | `AddRefreshTokenIndex` — Index on RefreshToken column | 2026-03-25 |
-| 5 | `UpdateProjectStatusToLegal` — Updated ProjectStatus enum values | 2026-03-25 |
+| 5 | `UpdateProjectStatusToLegal` — Updated ProjectStatus enum values to legal workflow | 2026-03-25 |
+| 6 | `ChangeProjectDatesToDateOnly` — Altered StartDate/EndDate from `timestamptz` to `date` | 2026-04-03 |
+| 7 | `AddEmailVerification` — Added IsEmailVerified, EmailVerificationToken, EmailVerificationTokenExpiry; PasswordResetToken, PasswordResetTokenExpiry to Users | 2026-04-08 |
 
 ---
 
@@ -247,15 +253,17 @@ Host=localhost;Port=5432;Database=lawgate_db;Username=lawgate_user;Password=lawg
 ```json
 {
   "Jwt": {
-    "Key": "your-secret-key-min-32-characters",
-    "Issuer": "lawgate-api",
-    "Audience": "lawgate-client",
+    "SecretKey": "",
+    "Issuer": "LegalDocSystem",
+    "Audience": "LegalDocSystemUsers",
     "ExpiryMinutes": 1440
   }
 }
 ```
 
-JWT tokens expire after **24 hours**. Refresh tokens are stored in the database (hashed).
+`SecretKey` is intentionally empty in `appsettings.json`. Set it via user-secrets (dev) or Key Vault (prod). The API throws `InvalidOperationException` on startup if the key is missing.
+
+JWT access tokens expire after **24 hours**. Refresh tokens are stored hashed (SHA-256) in the database and rotated on every use.
 
 ### Azure Storage (Local Dev — Azurite)
 ```json
@@ -274,23 +282,32 @@ JWT tokens expire after **24 hours**. Refresh tokens are stored in the database 
 ## Security Features
 
 - **Passwords**: BCrypt with cost factor 11
-- **Tokens**: JWT (HS256), 24-hour access token + refresh token
-- **Multi-tenancy**: Every EF Core query is filtered by `CompanyId` — users can only see their company's data
+- **Tokens**: JWT (HS256), 24-hour access token + refresh token (SHA-256 hashed, rotated on use)
+- **Multi-tenancy**: Every EF Core query filtered by `CompanyId` — users can only see their company's data
 - **RBAC**: Role checked at controller level (`[Authorize(Roles = "...")]`)
-- **Project-level permissions**: `ProjectPermission` entity for fine-grained access (Viewer/Editor/Manager)
+- **Email verification**: Login is blocked until email address is verified
+- **Rate limiting**: `FixedWindowLimiter` — auth endpoints: 10 req/min; all other endpoints: 100 req/min
+- **Security headers**: `X-Content-Type-Options`, `X-Frame-Options`, `Content-Security-Policy`, `Referrer-Policy`, `Cross-Origin-Resource-Policy`, `Permissions-Policy`
+- **Input sanitization**: `InputSanitizationMiddleware` strips HTML/script tags from all JSON request bodies
+- **Project-level permissions**: `ProjectPermission` entity for fine-grained access
 - **Audit trail**: All mutating actions logged with before/after values, IP, user agent
 - **Global exception handling**: Consistent error response format, no stack traces in production
+- **CORS**: Explicit `AllowedOrigins` list in `appsettings.json`; no wildcard
 
 ---
 
 ## Default Dev Users (Seed Data)
 
-| Email | Password | Role |
-|-------|----------|------|
-| `owner@lawgate.com` | `Admin@123` | CompanyOwner |
-| `admin@lawgate.com` | `Admin@123` | Admin |
-| `user@lawgate.com`  | `Admin@123` | User |
-| `platform@lawgate.com` | `Admin@123` | PlatformAdmin |
+All seeded users have `IsEmailVerified = true`.
+
+| Email | Password | Role | Company |
+|-------|----------|------|---------|
+| `admin@demolawfirm.com` | `Admin@123` | CompanyOwner | Demo Law Firm |
+| `jane.doe@demolawfirm.com` | `User@123` | User | Demo Law Firm |
+| `admin@lawgate.io` | `LawgatePlatform@1` | PlatformAdmin | Lawgate Platform |
+| `superadmin@lawgate.io` | `LawgateSuperAdmin@1` | PlatformSuperAdmin | Lawgate Platform |
+
+⚠️ **Never use these in production.** Seed data runs only when the database is empty (`if (await context.Companies.AnyAsync()) return;`).
 
 ---
 
@@ -327,4 +344,4 @@ docker-compose up backend
 
 ---
 
-*Last updated: 2026-03-27*
+*Last updated: 2026-04-04*
