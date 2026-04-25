@@ -141,7 +141,7 @@ VITE_API_URL=http://localhost:5059/api
 VITE_APP_NAME=Lawgate
 ```
 
-> When running in Docker the frontend container uses the internal Docker network name. The `.env.local` above is for running the frontend locally (outside Docker).
+> In the current setup, the frontend uses `http://localhost:5059/api` for API requests, including when running with Docker Compose, because the browser connects through the host-mapped API port. Do not switch this to an internal Docker service name unless you are explicitly building the client with a browser-reachable hostname.
 
 ### API Configuration
 File: `src/services/api.ts`

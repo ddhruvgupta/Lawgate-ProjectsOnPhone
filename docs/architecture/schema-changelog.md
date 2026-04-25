@@ -32,9 +32,11 @@ All core entities in Clean Architecture structure:
 ## Version 1.1.0 - Add Document Status (2026-01-25)
 
 ### Columns Added
-- **Documents**: `Status` (enum: Pending / Confirmed)
+- **Documents**: `Status` (enum: Pending / Active / Scanning / Failed)
   - Pending = upload URL generated but not yet confirmed
-  - Confirmed = client confirmed file uploaded to Azure Blob Storage
+  - Active = file uploaded and confirmed available
+  - Scanning = file uploaded but undergoing security scan
+  - Failed = upload failed or file was rejected (e.g. size mismatch)
 
 ### Migration
 `20260125031050_AddDocumentStatus`
