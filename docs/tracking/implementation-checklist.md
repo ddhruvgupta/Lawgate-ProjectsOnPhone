@@ -101,7 +101,7 @@ Use this checklist to track your progress in implementing the full application.
 - [x] Create Document controller
 - [x] Create Audit controller
 - [x] Create Platform Admin controller
-- [ ] Create Role controller
+- [x] Create Role controller
 - [x] Add health check endpoint
 - [x] Implement authorization policies
 - [x] Add input validation (DTO validation attributes: `[Required]`, `[EmailAddress]`, `[MinLength]`, `[Phone]` on all auth DTOs)
@@ -125,9 +125,9 @@ Use this checklist to track your progress in implementing the full application.
 
 ### Documentation
 - [x] Document current schema in `database/docs/schema-changelog.md`
-- [ ] Update connection strings in docs
-- [ ] Add backup/restore procedures
-- [ ] Document all seed data
+- [x] Update connection strings in docs
+- [x] Add backup/restore procedures
+- [x] Document all seed data
 
 ## Phase 5: Integration & Testing
 
@@ -303,6 +303,9 @@ Use this checklist to track your progress in implementing the full application.
 - [ ] Implement optimizations
 - [ ] Add new features based on feedback
 - [ ] Refactor code as needed
+
+### Technical Debt
+- [ ] Fix `IBlobStorageService` interface — `GetSasUri` parameter uses `Azure.Storage.Sas.BlobSasPermissions` (Azure SDK type leaking into Application layer). Replace with a provider-agnostic `StorageAccessPermissions` enum so the interface is truly cloud-independent. See `docs/architecture/storage-provider-decision.md` for context.
 
 ## Important Reminders
 
