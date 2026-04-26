@@ -1,5 +1,5 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
-import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse } from '../types/auth';
+import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse, User } from '../types/auth';
 import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5059/api';
@@ -100,8 +100,8 @@ class ApiService {
     return response.data;
   }
 
-  async getCurrentUser(): Promise<ApiResponse<any>> {
-    const response = await this.api.get<ApiResponse<any>>('/auth/me');
+  async getCurrentUser(): Promise<ApiResponse<User>> {
+    const response = await this.api.get<ApiResponse<User>>('/auth/me');
     return response.data;
   }
 

@@ -40,7 +40,7 @@ export interface CreateProjectRequest {
   status: ProjectStatus;
 }
 
-export interface UpdateProjectRequest extends CreateProjectRequest {}
+export type UpdateProjectRequest = CreateProjectRequest;
 
 // ─── Documents ───────────────────────────────────────────────────────────────
 

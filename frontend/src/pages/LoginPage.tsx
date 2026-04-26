@@ -19,8 +19,8 @@ export const LoginPage: React.FC = () => {
     try {
       await login(email, password);
       navigate('/dashboard');
-    } catch (err: any) {
-      const msg = err.message || 'Login failed. Please check your credentials.';
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Login failed. Please check your credentials.';
       if (msg.toLowerCase().includes('not verified')) {
         setShowResendVerification(true);
       }

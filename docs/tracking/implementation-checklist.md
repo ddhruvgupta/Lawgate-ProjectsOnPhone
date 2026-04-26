@@ -203,106 +203,132 @@ Use this checklist to track your progress in implementing the full application.
 
 ## Phase 7: Azure Deployment Preparation
 
-### Azure Resource Setup
-- [ ] Create Azure account
-- [ ] Install Azure CLI
-- [ ] Login to Azure (`az login`)
-- [ ] Create resource group
-- [ ] Create Azure Key Vault
-- [ ] Store secrets in Key Vault
+### Infrastructure as Code (Bicep) ✅ COMPLETE
+- [x] Create Azure Bicep templates — all modules exist in `infra/`
+- [x] App Service Plan + Web App (`infra/modules/app-service.bicep`) — Linux B1, .NET 10, system-assigned managed identity, health check at `/health`, HTTPS-only
+- [x] Azure Database for PostgreSQL Flexible Server (`infra/modules/database.bicep`)
+- [x] Azure Blob Storage account (`infra/modules/storage.bicep`) — `legal-documents` container
+- [x] Azure Key Vault (`infra/modules/keyvault.bicep`) — stores DB connection string, JWT secret, ACS connection string, SAS key via RBAC
+- [x] Application Insights + Log Analytics Workspace (`infra/modules/monitoring.bicep`)
+- [x] Azure Static Web App (`infra/modules/static-web-app.bicep`) — Free tier, GitHub Actions deployment
+- [x] Azure Communication Services (`infra/modules/communication.bicep`) — existing resource referenced in `main.bicep` via `existing` keyword
+- [x] Parameter file (`infra/main.bicepparam`) — non-sensitive params committed; secrets passed at deploy time
+- [x] Full deployment script (`infra/scripts/deploy.ps1`) — runs what-if, Bicep deploy, firewall rule, EF migrations, backend zip-deploy, frontend SWA deploy in one command
 
-### Database Deployment
-- [ ] Create Azure Database for PostgreSQL
-- [ ] Configure firewall rules
-- [ ] Apply migrations to Azure database
-- [ ] Seed production data (without test users!)
-- [ ] Test connection from local machine
-- [ ] Setup automated backups
+### CI/CD Pipelines ✅ COMPLETE
+- [x] GitHub Actions CI workflow (`.github/workflows/ci.yml`) — runs on every PR/push to main: backend unit tests (52), integration tests (57), frontend type-check + lint + unit tests (43) + production build
+- [x] GitHub Actions backend deploy (`.github/workflows/deploy-backend.yml`) — triggered on push to `main` when `backend/` changes; builds, publishes linux-x64, runs EF migrations, zip-deploys to App Service, verifies `/health`
+- [x] GitHub Actions frontend deploy (`.github/workflows/deploy-frontend.yml`) — triggered on push to `main` when `frontend/` changes; builds with production env vars, deploys to Static Web App
 
-### Backend Deployment
-- [ ] Create App Service Plan
-- [ ] Create Web App
-- [ ] Configure managed identity
-- [ ] Grant Key Vault access
-- [ ] Configure app settings
-- [ ] Deploy backend code
-- [ ] Test backend in Azure
-- [ ] Configure custom domain (optional)
-- [ ] Enable HTTPS
+### Required GitHub Secrets (user action needed)
+Add these in **GitHub → Settings → Secrets and variables → Actions → New repository secret**:
 
-### Frontend Deployment
-- [ ] Create Static Web App or Blob Storage
-- [ ] Build production frontend
-- [ ] Deploy frontend
-- [ ] Configure environment variables
-- [ ] Test frontend in Azure
-- [ ] Configure custom domain (optional)
-- [ ] Setup CDN (optional)
+| Secret | How to obtain |
+|---|---|
+| `AZURE_CREDENTIALS` | `az ad sp create-for-rbac --name lawgate-github --role contributor --scopes /subscriptions/<id>/resourceGroups/<rg> --sdk-auth` |
+| `AZURE_WEBAPP_NAME` | Output of `az webapp list --rg <rg> --query '[0].name' -o tsv` after Bicep deploy |
+| `AZURE_API_URL` | Bicep output `apiUrl` (e.g. `https://lawgate-prod-api-abc123.azurewebsites.net`) |
+| `AZURE_DATABASE_CONNECTION_STRING` | For migrations: `Host=<fqdn>;Database=lawgate_db;Username=lawgate_admin;Password=<pw>;SslMode=Require` |
+| `JWT_SECRET_KEY` | Same value used during Bicep deploy |
+| `AZURE_STATIC_WEB_APPS_API_TOKEN` | `az staticwebapp secrets list --name <swa-name> --query 'properties.apiKey' -o tsv` |
+| `VITE_API_URL` | Backend API URL + `/api` (e.g. `https://lawgate-prod-api-abc123.azurewebsites.net/api`) |
 
-### Monitoring Setup
-- [ ] Create Application Insights
-- [ ] Configure backend logging
-- [ ] Setup alerts
-- [ ] Configure health checks
-- [ ] Test monitoring dashboard
+### Actual Azure Deployment (user action needed)
+- [ ] Run `az login` and select the correct subscription
+- [ ] Create resource group: `az group create --name project-management --location eastus`
+- [ ] Run `.\infra\scripts\deploy.ps1 -ResourceGroup project-management -Location eastus`
+- [ ] Verify backend health: `curl https://<app-name>.azurewebsites.net/health`
+- [ ] Verify frontend loads at the Static Web App URL
+- [ ] Add GitHub Actions secrets (table above)
+- [ ] Trigger a deployment via `git push main` and confirm Actions run green
 
-## Phase 8: CI/CD Setup
+### Post-Deployment Verification (user action needed)
+- [ ] Register a new user and complete email verification flow end-to-end
+- [ ] Create a project and upload a document
+- [ ] Check Application Insights for any errors
+- [ ] Confirm logs appear in Log Analytics Workspace
 
-### GitHub Actions
-- [ ] Create backend deployment workflow
-- [ ] Create frontend deployment workflow
-- [ ] Create database migration workflow
-- [ ] Add secrets to GitHub repository
-- [ ] Test automated deployment
-- [ ] Setup staging environment (optional)
-
-### Documentation
-- [ ] Update README with deployment instructions
-- [ ] Document CI/CD process
-- [ ] Create runbook for common operations
-- [ ] Document rollback procedures
-
-## Phase 9: Production Launch
+## Phase 8: Production Launch
 
 ### Pre-Launch Checklist
-- [ ] Remove test/debug code
-- [ ] Update all environment variables
-- [ ] Remove development seed data
-- [ ] Test all critical user flows
-- [ ] Perform security audit
-- [ ] Test backup and restore
-- [ ] Review and optimize database indexes
-- [ ] Load testing (optional)
-- [ ] Setup monitoring alerts
+- [x] No test/debug code in codebase — `TestController` removed in Phase 6
+- [x] JWT secret not in source code — empty in `appsettings.json`, required at startup
+- [x] Development seed data is dev-only — `DbSeeder` only runs in `Development` environment
+- [x] OWASP Top 10 review completed — see Phase 6 Security Hardening
+- [x] Rate limiting configured — auth: 10/min, global: 100/min
+- [x] Security headers middleware active — CSP, X-Frame-Options, etc.
+- [ ] Custom domain configured (optional — add `CNAME` to your DNS after deployment)
+- [ ] Review and optimize database indexes (see notes below)
+- [ ] Load test the `/api/documents/upload-url` and `/api/auth/login` endpoints before launch
+
+### Database Index Review
+The following queries will be expensive at scale without indexes. Run after first deployment:
+```sql
+-- Documents: lookup by project + status (used in list queries)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_documents_project_status
+  ON "Documents" ("ProjectId", "Status");
+
+-- AuditLogs: company + entity type queries
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_auditlogs_company_entity
+  ON "AuditLogs" ("CompanyId", "EntityType");
+
+-- RefreshTokens: lookup by token hash (login/refresh flow)
+CREATE INDEX CONCURRENTLY IF NOT EXISTS ix_users_refreshtoken
+  ON "Users" ("RefreshToken") WHERE "RefreshToken" IS NOT NULL;
+```
+Add these as an EF Core migration if you decide to make them permanent.
 
 ### Launch
-- [ ] Deploy to production
-- [ ] Verify all services running
-- [ ] Test production environment
-- [ ] Monitor for errors
-- [ ] Create first production backup
+- [ ] Run full deployment (Phase 7 steps above)
+- [ ] Smoke-test all critical user flows in production
+- [ ] Create first production database backup
+- [ ] Monitor Application Insights for 24 hours post-launch
 
-### Post-Launch
-- [ ] Monitor application logs
-- [ ] Review performance metrics
-- [ ] Gather user feedback
-- [ ] Plan next iteration
-
-## Phase 10: Maintenance & Improvement
+## Phase 9: Maintenance & Improvement
 
 ### Regular Maintenance
-- [ ] Setup weekly database backups
-- [ ] Review and update dependencies monthly
-- [ ] Monitor Azure costs
-- [ ] Review security alerts
-- [ ] Update documentation as needed
+- [ ] Setup Azure Database automated backups (enable in Azure Portal → PostgreSQL → Backup)
+- [ ] Review and update NuGet/npm dependencies monthly (`dotnet outdated`, `npm outdated`)
+- [ ] Monitor Azure costs monthly via Cost Management
+- [ ] Review security advisories — two **existing** vulnerabilities flagged at build time:
+  - `MailKit 4.15.1` — moderate severity ([GHSA-9j88-vvj5-vhgr](https://github.com/advisories/GHSA-9j88-vvj5-vhgr)) — upgrade when fixed
+  - `System.Security.Cryptography.Xml 9.0.0` — high severity ([GHSA-37gx-xxp4-5rgx](https://github.com/advisories/GHSA-37gx-xxp4-5rgx)) — upgrade when .NET 10 patch available
+- [ ] Update documentation as architecture evolves
 
 ### Continuous Improvement
-- [ ] Gather performance metrics
-- [ ] Identify bottlenecks
-- [ ] Implement optimizations
-- [ ] Add new features based on feedback
-- [ ] Refactor code as needed
+- [ ] Add missing features from open GitHub Issues (see issue list)
+- [ ] Implement document versioning (`GET /api/documents/{id}/versions`) — Issue #12
+- [ ] Implement project-level permission grant/revoke endpoints — Issue #8
+- [ ] Document upload UI on `ProjectDetailPage` (currently placeholder) — Issue #20
+- [ ] Implement document tagging endpoints — Issue #10
+
+## Phase 10: Search (Future)
+
+### Azure AI Search — full-text document search scoped by company (Issue #38)
+
+#### Infrastructure
+- [ ] Add `infra/modules/search.bicep` — Azure AI Search resource (Free tier for MVP, Basic for prod SLA)
+- [ ] Wire into `infra/main.bicep`; store endpoint + admin key in Key Vault
+- [ ] Configure indexer: storage account data source → index with field mappings (`companyId`, `projectId`, `fileName`, `documentType`, `tags`, `content`, `uploadedAt`, `status`)
+- [ ] Grant indexer read access to blob storage via managed identity (preferred over key-based)
+
+#### Backend
+- [ ] Add `ISearchService` interface to `LegalDocSystem.Application/Interfaces/`
+- [ ] Add `AzureSearchService` to `LegalDocSystem.Infrastructure/Services/` using `Azure.Search.Documents` NuGet (Infrastructure-only — Application layer stays SDK-free)
+- [ ] Add `SearchDocumentsQuery` + MediatR handler in Application layer
+- [ ] Add `GET /api/documents/search?q={query}&projectId={id}` to `DocumentsController`
+- [ ] Mandatory server-side filter: `companyId eq {user.CompanyId}` — never trust client to scope their own tenant
+
+#### Frontend
+- [ ] Search bar on Projects page and Project Detail page
+- [ ] `useDocumentSearch` debounced custom hook (React Query)
+- [ ] Results list with document name, type, project, and content snippet highlighting
+
+#### Design Notes
+- Tenant isolation is enforced by `companyId` filter at the API layer — not by container-level access in Search
+- Azure AI Search's enrichment pipeline handles content extraction from PDF/Word/etc blobs automatically
+- One indexer for all containers; `companyId` stored as a filterable field on every indexed document
+
 
 ### Technical Debt
 - [x] Fix `IBlobStorageService` interface — `GetSasUri` parameter now uses `StorageAccessPermissions` enum (defined in `LegalDocSystem.Domain.Enums`). Removed `Azure.Storage.Sas.BlobSasPermissions` from Application layer entirely. `AzureBlobStorageService` maps the enum to Azure's type internally. `Azure.Storage.Blobs` NuGet package removed from `LegalDocSystem.Application.csproj`. Config key renamed from `AzureStorage` → `BlobStorage` in both `appsettings.json` files. See `docs/architecture/storage-provider-decision.md` for context.
@@ -343,16 +369,24 @@ Use this section to track your progress:
 
 **Started**: 2025-01-20
 
-**Last Updated**: 2026-04-04
+## Progress Tracking
 
-**Target Completion**: TBD
+**Current Phase**: Phase 7 — Azure Deployment (infrastructure code complete; user must run `deploy.ps1`)
+
+**Last Updated**: 2026-04-25
 
 **Recently Completed** (April 2026):
+- Cloud-provider independence: `StorageAccessPermissions` enum replaces `BlobSasPermissions` in Application layer; `Azure.Storage.Blobs` removed from `Application.csproj`; config key `AzureStorage` → `BlobStorage`
+- Fixed `app-service.bicep`: App Setting key renamed from `AzureStorage__ConnectionString` → `ConnectionStrings__BlobStorage`
+- Fixed `deploy.ps1`: SWA deployment token retrieved via `az staticwebapp secrets list` (not Bicep outputs)
+- GitHub Actions workflows created: `ci.yml`, `deploy-backend.yml`, `deploy-frontend.yml`
+- GitHub Issues #9, #22, #23 closed (audit logging, unit tests, integration tests — all complete)
+
+**Recently Completed** (April 2026 — earlier):
 - Project `StartDate`/`EndDate` changed from `timestamp with time zone` → `date` (DateOnly); migration `20260403210848_ChangeProjectDatesToDateOnly`
-- Unit tests expanded: 52 total (was 29) — full coverage for RegisterAsync (10 new), ProjectService (17, was 4)
-- Integration tests expanded: 57 total (was 29) — full coverage for register endpoint (14 new), ProjectController (20, was 6)
-- `TestWebAppFactory` seeds `member@test.com` (User role) for 403 role-based delete test
-- All 3 remaining Copilot PR #33 feedback items resolved (unused `kvRef` in Bicep, Static Web App deployment token removed from outputs)
+- Unit tests expanded: 52 total — full coverage for RegisterAsync, ProjectService
+- Integration tests expanded: 57 total — full coverage for register endpoint, ProjectController
+- All 3 Copilot PR #33 feedback items resolved
 
 **Recently Completed** (March 2026 — Phase 6):
 - Email verification: `IsEmailVerified`, `EmailVerificationToken`, `EmailVerificationTokenExpiry` on User; migration `20260408000000_AddEmailVerification`
