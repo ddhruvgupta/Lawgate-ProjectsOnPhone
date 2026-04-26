@@ -35,6 +35,7 @@ function makeUser(role: User['role']): User {
     role,
     companyId: 1,
     isActive: true,
+    isEmailVerified: true,
   }
 }
 
