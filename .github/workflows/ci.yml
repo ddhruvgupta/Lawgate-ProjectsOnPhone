@@ -75,11 +75,14 @@ jobs:
       - name: Integration tests
         run: >
           dotnet test LegalDocSystem.IntegrationTests/LegalDocSystem.IntegrationTests.csproj
-          --no-build --configuration Release
+          --configuration Release
           --logger "trx;LogFileName=integration-results.trx"
         env:
-          # Testcontainers pulls postgres:16 from Docker Hub — Docker is pre-installed on ubuntu-latest
           DOTNET_ENVIRONMENT: Testing
+          # Testcontainers: disable Ryuk container (cleanup daemon) — not needed in CI and can cause permission issues
+          TESTCONTAINERS_RYUK_DISABLED: "true"
+          # Ensure Testcontainers can reach the Docker daemon on GitHub Actions ubuntu-latest
+          DOCKER_HOST: unix:///var/run/docker.sock
 
       - name: Upload test results
         if: always()

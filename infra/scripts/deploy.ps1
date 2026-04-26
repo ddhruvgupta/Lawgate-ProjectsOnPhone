@@ -1,6 +1,6 @@
-<#
+﻿<#
 .SYNOPSIS
-    Full Lawgate deployment orchestrator — deploys all Azure infrastructure
+    Full Lawgate deployment orchestrator - deploys all Azure infrastructure
     via Bicep and then deploys the backend API and frontend.
 
 .DESCRIPTION
@@ -102,7 +102,7 @@ function Get-SecureStringPlainText([System.Security.SecureString]$ss) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 1 — Prerequisites
+# Step 1 - Prerequisites
 # ---------------------------------------------------------------------------
 
 Write-Step 1 "Checking prerequisites"
@@ -120,14 +120,14 @@ Write-Host "  .NET     : $(dotnet --version)"
 Write-Host "  Node     : $(node --version)"
 
 # ---------------------------------------------------------------------------
-# Step 2 — Login / subscription
+# Step 2 - Login / subscription
 # ---------------------------------------------------------------------------
 
 Write-Step 2 "Azure authentication"
 
 $account = az account show 2>$null | ConvertFrom-Json
 if (-not $account) {
-    Write-Host "  Not logged in — running az login..."
+    Write-Host "  Not logged in - running az login..."
     az login | Out-Null
     $account = az account show | ConvertFrom-Json
 }
@@ -141,7 +141,7 @@ if ($Subscription) {
 Write-Host "  Subscription: $($account.name) ($($account.id))"
 
 # ---------------------------------------------------------------------------
-# Step 3 — Resource group
+# Step 3 - Resource group
 # ---------------------------------------------------------------------------
 
 Write-Step 3 "Resource group: $ResourceGroup"
@@ -156,7 +156,7 @@ if (-not $rgExists) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 4 — Bicep deployment
+# Step 4 - Bicep deployment
 # ---------------------------------------------------------------------------
 
 if (-not $SkipBicep) {
@@ -235,12 +235,12 @@ if (-not $SkipBicep) {
         Write-Host "    API URL   : $($script:ApiUrl)"
         Write-Host "    Frontend  : $($script:FrontendUrl)"
     } else {
-        Write-Host "  No prior deployment found — some steps may fail without outputs"
+        Write-Host "  No prior deployment found - some steps may fail without outputs"
     }
 }
 
 # ---------------------------------------------------------------------------
-# Step 5 — Add local IP to PostgreSQL firewall for migrations
+# Step 5 - Add local IP to PostgreSQL firewall for migrations
 # ---------------------------------------------------------------------------
 
 if (-not $SkipMigrations) {
@@ -262,10 +262,10 @@ if (-not $SkipMigrations) {
         --rule-name "LocalMigrations-$(Get-Date -Format 'yyyyMMddHHmm')" `
         --start-ip-address $myIp `
         --end-ip-address $myIp | Out-Null
-    Write-Host "  Firewall rule added for $myIp → $pgServer"
+    Write-Host "  Firewall rule added for $myIp -> $pgServer"
 
     # ---------------------------------------------------------------------------
-    # Step 6 — EF Core migrations
+    # Step 6 - EF Core migrations
     # ---------------------------------------------------------------------------
 
     Write-Step 6 "Running EF Core migrations"
@@ -282,7 +282,7 @@ if (-not $SkipMigrations) {
     try {
         dotnet ef database update --no-build 2>&1
         if ($LASTEXITCODE -ne 0) {
-            # No release build present — build first
+            # No release build present - build first
             Write-Host "  Build required before migrations..."
             dotnet build --configuration Release --no-restore 2>&1 | Where-Object { $_ -notmatch '^Build succeeded' }
             dotnet ef database update 2>&1
@@ -305,7 +305,7 @@ if (-not $SkipMigrations) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 7 — Deploy backend via zip-deploy
+# Step 7 - Deploy backend via zip-deploy
 # ---------------------------------------------------------------------------
 
 if (-not $SkipBackend) {
@@ -348,7 +348,7 @@ if (-not $SkipBackend) {
 }
 
 # ---------------------------------------------------------------------------
-# Step 8 — Build and deploy frontend
+# Step 8 - Build and deploy frontend
 # ---------------------------------------------------------------------------
 
 if (-not $SkipFrontend) {
@@ -379,7 +379,7 @@ if (-not $SkipFrontend) {
             Write-Host "    npm install -g @azure/static-web-apps-cli" -ForegroundColor Yellow
             Write-Host "    swa deploy frontend/dist --deployment-token <token>" -ForegroundColor Yellow
             Write-Host ""
-            Write-Host "  Or push to GitHub — the CI workflow uses:" -ForegroundColor Yellow
+            Write-Host "  Or push to GitHub - the CI workflow uses:" -ForegroundColor Yellow
             Write-Host "    AZURE_STATIC_WEB_APPS_API_TOKEN = $($script:StaticWebAppToken.Substring(0,8))..." -ForegroundColor Yellow
             Write-Host "  Add this as a repository secret named AZURE_STATIC_WEB_APPS_API_TOKEN" -ForegroundColor Yellow
         }
