@@ -34,6 +34,17 @@ param postgresAdminPassword = ''   // REQUIRED — set via CLI or environment
 param jwtSecretKey = ''            // REQUIRED — set via CLI or environment
 
 // ===========================================================================
+// Existing database server — reuse pre-existing PostgreSQL flexible server
+// instead of provisioning a new one (avoids quota issues on fresh subscriptions)
+// ===========================================================================
+
+// Name of the existing PostgreSQL flexible server in the resource group
+param existingDbServerName = 'lawgate-prod-webapp-server'
+
+// Admin login for the existing server (auto-generated when server was first created)
+param dbAdminLogin = 'osxgosjnrg'
+
+// ===========================================================================
 // External ID — populate AFTER running scripts/setup-external-id.ps1
 // External ID Tenant: lawgateprojectmanagement.onmicrosoft.com
 //   1. Open https://entra.microsoft.com → switch tenant → Lawgate-projectManagement
