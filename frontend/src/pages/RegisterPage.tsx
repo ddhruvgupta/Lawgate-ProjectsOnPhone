@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import type { RegisterRequest } from '../types/auth';
 
 export const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -45,8 +44,8 @@ export const RegisterPage: React.FC = () => {
     try {
       await register({ ...formData, companyEmail: formData.email });
       navigate('/dashboard');
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
     } finally {
       setIsLoading(false);
     }

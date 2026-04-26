@@ -11,7 +11,8 @@ export const VerifyEmailPage: React.FC = () => {
 
   useEffect(() => {
     if (!token) {
-      setStatus('error');
+      // Use a microtask to avoid setState synchronously inside the effect body
+      Promise.resolve().then(() => setStatus('error'));
       return;
     }
 

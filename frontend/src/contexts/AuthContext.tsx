@@ -35,9 +35,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         throw new Error(response.message || 'Login failed');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Login failed';
+      const axiosMsg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       console.error('Login error:', error);
-      throw new Error(error.response?.data?.message || error.message || 'Login failed');
+      throw new Error(axiosMsg || msg);
     }
   };
 
@@ -55,9 +57,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       } else {
         throw new Error(response.message || 'Registration failed');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Registration failed';
+      const axiosMsg = (error as { response?: { data?: { message?: string } } })?.response?.data?.message;
       console.error('Registration error:', error);
-      throw new Error(error.response?.data?.message || error.message || 'Registration failed');
+      throw new Error(axiosMsg || msg);
     }
   };
 
@@ -95,6 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
 
+// eslint-disable-next-line react-refresh/only-export-components
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (context === undefined) {

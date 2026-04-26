@@ -38,7 +38,7 @@ jobs:
       - name: Unit tests
         run: >
           dotnet test LegalDocSystem.UnitTests/LegalDocSystem.UnitTests.csproj
-          --no-build --configuration Release
+          --configuration Release
           --logger "trx;LogFileName=unit-results.trx"
 
       - name: Upload test results
