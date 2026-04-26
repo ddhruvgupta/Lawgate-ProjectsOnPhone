@@ -65,11 +65,26 @@ param(
     [string] $PostgresPassword = '',
     [string] $JwtSecret = '',
 
+    # Explicit Static Web App name - avoids non-deterministic list queries when
+    # multiple SWAs exist in the resource group. Defaults to the Bicep naming
+    # convention: "${appName}-${environment}-frontend" (e.g. lawgate-prod-frontend).
+    [string] $StaticWebAppName = '',
+
     [switch] $SkipBicep,
     [switch] $SkipMigrations,
     [switch] $SkipBackend,
     [switch] $SkipFrontend
 )
+
+# Resolve SWA name: explicit param wins; otherwise filter by the known naming
+# convention suffix to avoid picking an arbitrary SWA from the resource group.
+function Resolve-SwaName([string]$rg, [string]$hint) {
+    if ($hint) { return $hint }
+    $name = az staticwebapp list --resource-group $rg `
+        --query "[?ends_with(name, '-frontend')].name | [0]" -o tsv 2>$null
+    if (-not $name) { throw "Could not find a Static Web App ending in '-frontend' in resource group '$rg'. Use -StaticWebAppName to specify it explicitly." }
+    return $name
+}
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
@@ -206,7 +221,7 @@ if (-not $SkipBicep) {
     $script:StorageAccountName   = $deployOutput.storageAccountName.value
 
     # Retrieve the SWA deployment token securely (intentionally not in Bicep outputs)
-    $swaName = az staticwebapp list --resource-group $ResourceGroup --query '[0].name' -o tsv
+    $swaName = Resolve-SwaName $ResourceGroup $StaticWebAppName
     $script:StaticWebAppToken = az staticwebapp secrets list --name $swaName --query 'properties.apiKey' -o tsv
 
     Write-Host ""
@@ -230,7 +245,7 @@ if (-not $SkipBicep) {
         $script:DbServerFqdn      = $deployOutput.databaseServerFqdn.value
         $script:StorageAccountName= $deployOutput.storageAccountName.value
         # Retrieve the SWA deployment token securely (intentionally not in Bicep outputs)
-        $swaName = az staticwebapp list --resource-group $ResourceGroup --query '[0].name' -o tsv
+        $swaName = Resolve-SwaName $ResourceGroup $StaticWebAppName
         $script:StaticWebAppToken = az staticwebapp secrets list --name $swaName --query 'properties.apiKey' -o tsv
         Write-Host "    API URL   : $($script:ApiUrl)"
         Write-Host "    Frontend  : $($script:FrontendUrl)"

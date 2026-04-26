@@ -49,12 +49,16 @@ jobs:
             --self-contained false
 
       - name: Create deployment zip
-        working-directory: backend
-        run: zip -r deploy-backend.zip publish/
+        working-directory: backend/publish
+        run: zip -r ../deploy-backend.zip .
 
       # -----------------------------------------------------------------------
       # EF Core migrations
       # -----------------------------------------------------------------------
+      - name: Install EF Core tools
+        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        run: dotnet tool install --global dotnet-ef
+
       - name: Run EF Core migrations
         if: ${{ github.event.inputs.skip_migrations != 'true' }}
         working-directory: backend/LegalDocSystem.API

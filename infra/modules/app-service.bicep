@@ -92,7 +92,9 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
           value: '1440'
         }
         // Blob Storage — connection string via Key Vault reference
-        // Config key matches ConnectionStrings:BlobStorage in appsettings.json
+        // ASP.NET Core maps the env var ConnectionStrings__BlobStorage to the
+        // ConnectionStrings:BlobStorage config key, which is read by
+        // GetConnectionString("BlobStorage") in AzureBlobStorageService.
         {
           name: 'ConnectionStrings__BlobStorage'
           value: '@Microsoft.KeyVault(SecretUri=${keyVaultUri}secrets/AzureStorageConnectionString/)'
