@@ -88,6 +88,9 @@ function Resolve-SwaName([string]$rg, [string]$hint) {
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Suppress az CLI WARNING messages (e.g. Bicep upgrade notices) so PS 5.1 does
+# not convert them into terminating NativeCommandError records.
+$env:AZURE_CORE_ONLY_SHOW_ERRORS = 'true'
 
 $InfraRoot  = $PSScriptRoot | Split-Path -Parent   # infra/
 $RepoRoot   = $InfraRoot    | Split-Path -Parent    # project root
@@ -127,10 +130,16 @@ Require-Command 'dotnet'
 Require-Command 'node'
 Require-Command 'npm'
 
-# Ensure Bicep is installed as az extension
+# Ensure Bicep is installed and up-to-date (suppresses upgrade WARNING in later commands)
+$savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 az bicep install 2>&1 | Out-Null
+az bicep upgrade 2>&1 | Out-Null
+$ErrorActionPreference = $savedEAP
 Write-Host "  az CLI   : $(az version --query '\"azure-cli\"' -o tsv)"
-Write-Host "  Bicep    : $(az bicep version --query 'bicepVersion' -o tsv 2>$null)"
+$savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+$bicepVer = (az bicep version 2>$null) -join ' '
+$ErrorActionPreference = $savedEAP
+Write-Host "  Bicep    : $bicepVer"
 Write-Host "  .NET     : $(dotnet --version)"
 Write-Host "  Node     : $(node --version)"
 
@@ -194,13 +203,15 @@ if (-not $SkipBicep) {
     $bicepParams = Join-Path $InfraRoot 'main.bicepparam'
 
     Write-Host "  Running what-if first..."
+    $savedEAP2 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     az deployment group what-if `
         --resource-group $ResourceGroup `
         --template-file $bicepMain `
         --parameters $bicepParams `
         --parameters postgresAdminPassword=$PostgresPassword `
         --parameters jwtSecretKey=$JwtSecret `
-        --no-pretty-print 2>&1 | Select-Object -Last 20
+        --no-pretty-print 2>&1 | Where-Object { $_ -notmatch '^WARNING' } | Select-Object -Last 30
+    $ErrorActionPreference = $savedEAP2
 
     $confirm = Read-Host "  Proceed with deployment? (y/N)"
     if ($confirm -ne 'y') { Write-Host "  Deployment cancelled."; return }
