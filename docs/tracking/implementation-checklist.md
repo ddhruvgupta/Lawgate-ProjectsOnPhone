@@ -296,11 +296,38 @@ Add these as an EF Core migration if you decide to make them permanent.
 - [ ] Update documentation as architecture evolves
 
 ### Continuous Improvement
-- [ ] Add missing features from open GitHub Issues (see issue list — 18 open issues)
+- [ ] Add missing features from open GitHub Issues (see issue list)
 - [ ] Implement document versioning (`GET /api/documents/{id}/versions`) — Issue #12
 - [ ] Implement project-level permission grant/revoke endpoints — Issue #8
 - [ ] Document upload UI on `ProjectDetailPage` (currently placeholder) — Issue #20
 - [ ] Implement document tagging endpoints — Issue #10
+
+## Phase 10: Search (Future)
+
+### Azure AI Search — full-text document search scoped by company (Issue #38)
+
+#### Infrastructure
+- [ ] Add `infra/modules/search.bicep` — Azure AI Search resource (Free tier for MVP, Basic for prod SLA)
+- [ ] Wire into `infra/main.bicep`; store endpoint + admin key in Key Vault
+- [ ] Configure indexer: storage account data source → index with field mappings (`companyId`, `projectId`, `fileName`, `documentType`, `tags`, `content`, `uploadedAt`, `status`)
+- [ ] Grant indexer read access to blob storage via managed identity (preferred over key-based)
+
+#### Backend
+- [ ] Add `ISearchService` interface to `LegalDocSystem.Application/Interfaces/`
+- [ ] Add `AzureSearchService` to `LegalDocSystem.Infrastructure/Services/` using `Azure.Search.Documents` NuGet (Infrastructure-only — Application layer stays SDK-free)
+- [ ] Add `SearchDocumentsQuery` + MediatR handler in Application layer
+- [ ] Add `GET /api/documents/search?q={query}&projectId={id}` to `DocumentsController`
+- [ ] Mandatory server-side filter: `companyId eq {user.CompanyId}` — never trust client to scope their own tenant
+
+#### Frontend
+- [ ] Search bar on Projects page and Project Detail page
+- [ ] `useDocumentSearch` debounced custom hook (React Query)
+- [ ] Results list with document name, type, project, and content snippet highlighting
+
+#### Design Notes
+- Tenant isolation is enforced by `companyId` filter at the API layer — not by container-level access in Search
+- Azure AI Search's enrichment pipeline handles content extraction from PDF/Word/etc blobs automatically
+- One indexer for all containers; `companyId` stored as a filterable field on every indexed document
 
 
 ### Technical Debt
