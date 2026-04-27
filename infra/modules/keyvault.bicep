@@ -54,7 +54,8 @@ resource keyVault 'Microsoft.KeyVault/vaults@2023-07-01' = {
     enabledForTemplateDeployment: true   // Allow Bicep to write secrets on deployment
     enableSoftDelete: true
     softDeleteRetentionInDays: 7
-    enablePurgeProtection: false         // Set to true for production once stable
+    // enablePurgeProtection omitted — cannot set to false if a recovered soft-deleted vault
+    // already has it enabled (irreversible). ARM defaults new vaults to false.
     networkAcls: {
       defaultAction: 'Allow'             // Restrict to VNet/IPs for production hardening
       bypass: 'AzureServices'

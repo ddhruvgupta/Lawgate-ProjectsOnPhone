@@ -33,17 +33,30 @@ jobs:
           dotnet-version: '10.0.x'
 
       # -----------------------------------------------------------------------
+      # Login to Azure early — needed for both firewall management and deploy
+      # -----------------------------------------------------------------------
+      - name: Login to Azure
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      # -----------------------------------------------------------------------
       # Build & publish
       # -----------------------------------------------------------------------
       - name: Restore
         working-directory: backend
         run: dotnet restore LegalDocSystem.sln
 
-      - name: Build & publish
+      - name: Build
+        working-directory: backend
+        run: dotnet build LegalDocSystem.sln --no-restore --configuration Release
+
+      - name: Publish
         working-directory: backend
         run: |
           dotnet publish LegalDocSystem.API/LegalDocSystem.API.csproj \
             --configuration Release \
+            --no-build \
             --output publish \
             --runtime linux-x64 \
             --self-contained false
@@ -59,22 +72,48 @@ jobs:
         if: ${{ github.event.inputs.skip_migrations != 'true' }}
         run: dotnet tool install --global dotnet-ef
 
+      - name: Open PostgreSQL firewall for CI runner
+        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        run: |
+          RUNNER_IP=$(curl -s https://api.ipify.org)
+          echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
+          # Start server if stopped
+          az postgres flexible-server start \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} 2>/dev/null || true
+          sleep 15
+          # Ensure public access is enabled
+          az postgres flexible-server update \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --public-access enabled 2>/dev/null || true
+          # Add runner IP to firewall
+          az postgres flexible-server firewall-rule create \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --rule-name "GitHubActions-${{ github.run_id }}" \
+            --start-ip-address $RUNNER_IP \
+            --end-ip-address $RUNNER_IP
+
       - name: Run EF Core migrations
         if: ${{ github.event.inputs.skip_migrations != 'true' }}
         working-directory: backend/LegalDocSystem.API
         run: dotnet ef database update --no-build
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.AZURE_DATABASE_CONNECTION_STRING }}
-          Jwt__SecretKey: ${{ secrets.JWT_SECRET_KEY }}
+
+      - name: Remove PostgreSQL firewall rule
+        if: always()
+        run: |
+          az postgres flexible-server firewall-rule delete \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --rule-name "GitHubActions-${{ github.run_id }}" \
+            --yes 2>/dev/null || true
 
       # -----------------------------------------------------------------------
       # Deploy to Azure App Service
       # -----------------------------------------------------------------------
-      - name: Login to Azure
-        uses: azure/login@v2
-        with:
-          creds: ${{ secrets.AZURE_CREDENTIALS }}
-
       - name: Deploy to App Service
         uses: azure/webapps-deploy@v3
         with:
@@ -83,6 +122,6 @@ jobs:
 
       - name: Verify health check
         run: |
-          echo "Waiting 30s for app to start..."
-          sleep 30
-          curl --fail --silent "${{ secrets.AZURE_API_URL }}/health" | jq .
+          echo "Waiting 45s for app to start..."
+          sleep 45
+          curl --fail --silent "${{ secrets.AZURE_API_URL }}/health"

@@ -65,6 +65,10 @@ param(
     [string] $PostgresPassword = '',
     [string] $JwtSecret = '',
 
+    # PostgreSQL admin login — defaults to reading from the server if not supplied.
+    # Required when the server admin differs from 'lawgate_admin' (e.g. existing servers).
+    [string] $PostgresAdminLogin = '',
+
     # Explicit Static Web App name - avoids non-deterministic list queries when
     # multiple SWAs exist in the resource group. Defaults to the Bicep naming
     # convention: "${appName}-${environment}-frontend" (e.g. lawgate-prod-frontend).
@@ -88,6 +92,9 @@ function Resolve-SwaName([string]$rg, [string]$hint) {
 
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Suppress az CLI WARNING messages (e.g. Bicep upgrade notices) so PS 5.1 does
+# not convert them into terminating NativeCommandError records.
+$env:AZURE_CORE_ONLY_SHOW_ERRORS = 'true'
 
 $InfraRoot  = $PSScriptRoot | Split-Path -Parent   # infra/
 $RepoRoot   = $InfraRoot    | Split-Path -Parent    # project root
@@ -127,10 +134,16 @@ Require-Command 'dotnet'
 Require-Command 'node'
 Require-Command 'npm'
 
-# Ensure Bicep is installed as az extension
+# Ensure Bicep is installed and up-to-date (suppresses upgrade WARNING in later commands)
+$savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
 az bicep install 2>&1 | Out-Null
+az bicep upgrade 2>&1 | Out-Null
+$ErrorActionPreference = $savedEAP
 Write-Host "  az CLI   : $(az version --query '\"azure-cli\"' -o tsv)"
-Write-Host "  Bicep    : $(az bicep version --query 'bicepVersion' -o tsv 2>$null)"
+$savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+$bicepVer = (az bicep version 2>$null) -join ' '
+$ErrorActionPreference = $savedEAP
+Write-Host "  Bicep    : $bicepVer"
 Write-Host "  .NET     : $(dotnet --version)"
 Write-Host "  Node     : $(node --version)"
 
@@ -194,13 +207,15 @@ if (-not $SkipBicep) {
     $bicepParams = Join-Path $InfraRoot 'main.bicepparam'
 
     Write-Host "  Running what-if first..."
+    $savedEAP2 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     az deployment group what-if `
         --resource-group $ResourceGroup `
         --template-file $bicepMain `
         --parameters $bicepParams `
         --parameters postgresAdminPassword=$PostgresPassword `
         --parameters jwtSecretKey=$JwtSecret `
-        --no-pretty-print 2>&1 | Select-Object -Last 20
+        --no-pretty-print 2>&1 | Where-Object { $_ -notmatch '^WARNING' } | Select-Object -Last 30
+    $ErrorActionPreference = $savedEAP2
 
     $confirm = Read-Host "  Proceed with deployment? (y/N)"
     if ($confirm -ne 'y') { Write-Host "  Deployment cancelled."; return }
@@ -271,12 +286,34 @@ if (-not $SkipMigrations) {
 
     if (-not $pgServer) { throw "No PostgreSQL server found in $ResourceGroup" }
 
+    # Ensure the server is started (it may be stopped)
+    $pgState = az postgres flexible-server show --name $pgServer --resource-group $ResourceGroup --query 'state' -o tsv 2>$null
+    if ($pgState -eq 'Stopped') {
+        Write-Host "  Starting PostgreSQL server..."
+        $savedEAP3 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        az postgres flexible-server start --name $pgServer --resource-group $ResourceGroup 2>&1 | Out-Null
+        $ErrorActionPreference = $savedEAP3
+        Start-Sleep -Seconds 30
+    }
+
+    # Enable public access if needed (private-access servers reject firewall rules)
+    $netType = az postgres flexible-server show --name $pgServer --resource-group $ResourceGroup --query 'network.publicNetworkAccess' -o tsv 2>$null
+    if ($netType -ne 'Enabled') {
+        Write-Host "  Enabling public network access on server for migrations..."
+        $savedEAP3 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        az postgres flexible-server update --name $pgServer --resource-group $ResourceGroup --public-access enabled 2>&1 | Out-Null
+        $ErrorActionPreference = $savedEAP3
+        Write-Host "  Public access enabled"
+    }
+
+    $savedEAP3 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     az postgres flexible-server firewall-rule create `
         --resource-group $ResourceGroup `
         --name $pgServer `
         --rule-name "LocalMigrations-$(Get-Date -Format 'yyyyMMddHHmm')" `
         --start-ip-address $myIp `
-        --end-ip-address $myIp | Out-Null
+        --end-ip-address $myIp 2>&1 | Out-Null
+    $ErrorActionPreference = $savedEAP3
     Write-Host "  Firewall rule added for $myIp -> $pgServer"
 
     # ---------------------------------------------------------------------------
@@ -290,17 +327,28 @@ if (-not $SkipMigrations) {
         Get-SecureStringPlainText $pgSecure
     }
 
-    $migrationsConnStr = "Host=$($script:DbServerFqdn);Database=lawgate_db;Username=lawgate_admin;Password=$dbPassword;SslMode=Require;TrustServerCertificate=false"
+    # Resolve admin login: prefer explicitly-set DbAdminLogin param, fall back to server config
+    $resolvedAdminLogin = if ($PostgresAdminLogin) { $PostgresAdminLogin } else {
+        az postgres flexible-server show --name $pgServer --resource-group $ResourceGroup --query 'administratorLogin' -o tsv 2>$null
+    }
+
+    $migrationsConnStr = "Host=$($script:DbServerFqdn);Database=lawgate_db;Username=${resolvedAdminLogin};Password=$dbPassword;SslMode=Require;TrustServerCertificate=false"
     $env:ConnectionStrings__DefaultConnection = $migrationsConnStr
 
     Push-Location (Join-Path $BackendDir 'LegalDocSystem.API')
     try {
-        dotnet ef database update --no-build 2>&1
-        if ($LASTEXITCODE -ne 0) {
+        $savedEAP4 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        dotnet ef database update --no-build 2>&1 | Where-Object { $_ -notmatch 'NU1902|NU1903|NU1904' }
+        $efExitCode = $LASTEXITCODE
+        $ErrorActionPreference = $savedEAP4
+        if ($efExitCode -ne 0) {
             # No release build present - build first
             Write-Host "  Build required before migrations..."
-            dotnet build --configuration Release --no-restore 2>&1 | Where-Object { $_ -notmatch '^Build succeeded' }
-            dotnet ef database update 2>&1
+            dotnet build --configuration Release --no-restore 2>&1 | Where-Object { $_ -match 'error|warning|succeeded|failed' -and $_ -notmatch 'NU190' }
+            $savedEAP4b = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+            dotnet ef database update 2>&1 | Where-Object { $_ -notmatch 'NU1902|NU1903|NU1904' }
+            if ($LASTEXITCODE -ne 0) { $ErrorActionPreference = $savedEAP4b; throw "EF migrations failed" }
+            $ErrorActionPreference = $savedEAP4b
         }
         Write-Host "  Migrations applied successfully" -ForegroundColor Green
     } finally {

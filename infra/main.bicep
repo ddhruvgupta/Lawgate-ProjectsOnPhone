@@ -28,6 +28,12 @@ param postgresAdminPassword string
 @secure()
 param jwtSecretKey string
 
+@description('Existing PostgreSQL flexible server name — set to empty string to create a new one')
+param existingDbServerName string = ''
+
+@description('PostgreSQL administrator login username for the existing server')
+param dbAdminLogin string = 'lawgate_admin'
+
 @description('Azure External ID external tenant ID — populate after running scripts/setup-external-id.ps1')
 param externalIdTenantId string = ''
 
@@ -76,18 +82,53 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
-// --- Database (no dependencies) ----------------------------------------------
+// --- Database --------------------------------------------------------------
+// If an existing server name is supplied, reference it (avoids quota issues);
+// otherwise create a new one via the database module.
 
-module database 'modules/database.bicep' = {
+var useExistingDb = existingDbServerName != ''
+
+resource existingDbServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-preview' existing = if (useExistingDb) {
+  name: useExistingDb ? existingDbServerName : 'placeholder'
+}
+
+// Ensure the application database exists on the existing server
+resource existingAppDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023-12-01-preview' = if (useExistingDb) {
+  parent: existingDbServer
+  name: 'lawgate_db'
+  properties: {
+    charset: 'UTF8'
+    collation: 'en_US.utf8'
+  }
+}
+
+// Ensure Azure services firewall rule exists on the existing server
+resource existingDbFirewall 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = if (useExistingDb) {
+  parent: existingDbServer
+  name: 'AllowAzureServices'
+  properties: {
+    startIpAddress: '0.0.0.0'
+    endIpAddress: '0.0.0.0'
+  }
+}
+
+var newDbServerName = '${namePrefix}-db-${take(suffix, 6)}'
+
+module database 'modules/database.bicep' = if (!useExistingDb) {
   name: 'database'
   params: {
     location: location
-    serverName: '${namePrefix}-db-${take(suffix, 6)}'
-    administratorLogin: 'lawgate_admin'
+    serverName: newDbServerName
+    administratorLogin: dbAdminLogin
     administratorLoginPassword: postgresAdminPassword
     databaseName: 'lawgate_db'
   }
 }
+
+// FQDN computed directly from server name — avoids accessing conditional module output (BCP318)
+var dbServerFqdn = useExistingDb
+  ? '${existingDbServerName}.postgres.database.azure.com'
+  : '${newDbServerName}.postgres.database.azure.com'
 
 // --- Static Web App (no dependencies) ----------------------------------------
 
@@ -153,7 +194,7 @@ module keyvault 'modules/keyvault.bicep' = {
   params: {
     location: location
     keyVaultName: keyVaultName
-    databaseConnectionString: 'Host=${database.outputs.serverFqdn};Database=lawgate_db;Username=lawgate_admin;Password=${postgresAdminPassword};SslMode=Require;TrustServerCertificate=false'
+    databaseConnectionString: 'Host=${dbServerFqdn};Database=lawgate_db;Username=${dbAdminLogin};Password=${postgresAdminPassword};SslMode=Require;TrustServerCertificate=false'
     jwtSecretKey: jwtSecretKey
     storageAccountName: storage.outputs.storageAccountName
     appServicePrincipalId: appService.outputs.principalId
@@ -176,7 +217,7 @@ output frontendUrl string = 'https://${staticWebApp.outputs.defaultHostname}'
 output keyVaultName string = keyVaultName
 
 @description('PostgreSQL server fully qualified domain name')
-output databaseServerFqdn string = database.outputs.serverFqdn
+output databaseServerFqdn string = dbServerFqdn
 
 @description('Storage account name')
 output storageAccountName string = storage.outputs.storageAccountName

@@ -9,14 +9,14 @@ param environment = 'prod'
 
 // Azure subscription: "Azure subscription 1"
 // Resource group:    project-management  (created with External ID tenant)
-// Deploy command:    .\scripts\deploy.ps1 -ResourceGroup project-management -Location eastus
+// Deploy command:    .\scripts\deploy.ps1 -ResourceGroup project-management -Location centralindia
 
-// Primary region — matches External ID tenant location (East US)
-param location = 'eastus'
+// Primary region — target audience is in India
+param location = 'centralindia'
 
-// Static Web App metadata location — eastus is not supported; eastus2 is the nearest allowed region
+// Static Web App metadata location — centralindia is not supported; eastasia is the nearest allowed region
 // Allowed: centralus | eastus2 | eastasia | westeurope | westus2
-param staticWebAppLocation = 'eastus2'
+param staticWebAppLocation = 'eastasia'
 
 // ===========================================================================
 // Sensitive parameters — DO NOT commit real values to source control
@@ -32,6 +32,17 @@ param staticWebAppLocation = 'eastus2'
 
 param postgresAdminPassword = ''   // REQUIRED — set via CLI or environment
 param jwtSecretKey = ''            // REQUIRED — set via CLI or environment
+
+// ===========================================================================
+// Existing database server — reuse pre-existing PostgreSQL flexible server
+// instead of provisioning a new one (avoids quota issues on fresh subscriptions)
+// ===========================================================================
+
+// Name of the existing PostgreSQL flexible server in the resource group
+param existingDbServerName = 'lawgate-prod-webapp-server'
+
+// Admin login for the existing server (auto-generated when server was first created)
+param dbAdminLogin = 'osxgosjnrg'
 
 // ===========================================================================
 // External ID — populate AFTER running scripts/setup-external-id.ps1
