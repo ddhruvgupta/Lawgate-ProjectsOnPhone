@@ -48,11 +48,11 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Restore
         working-directory: backend
-        run: dotnet restore LegalDocSystem.sln --runtime linux-x64
+        run: dotnet restore LegalDocSystem.API/LegalDocSystem.API.csproj --runtime linux-x64
 
       - name: Build
         working-directory: backend
-        run: dotnet build LegalDocSystem.sln --no-restore --configuration Release --runtime linux-x64
+        run: dotnet build LegalDocSystem.API/LegalDocSystem.API.csproj --no-restore --configuration Release --runtime linux-x64
 
       - name: Publish
         working-directory: backend
