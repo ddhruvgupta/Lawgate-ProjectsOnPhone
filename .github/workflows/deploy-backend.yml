@@ -48,11 +48,11 @@ jobs:
       # -----------------------------------------------------------------------
       - name: Restore
         working-directory: backend
-        run: dotnet restore LegalDocSystem.sln
+        run: dotnet restore LegalDocSystem.sln --runtime linux-x64
 
       - name: Build
         working-directory: backend
-        run: dotnet build LegalDocSystem.sln --no-restore --configuration Release
+        run: dotnet build LegalDocSystem.sln --no-restore --configuration Release --runtime linux-x64
 
       - name: Publish
         working-directory: backend
@@ -60,6 +60,8 @@ jobs:
           dotnet publish LegalDocSystem.API/LegalDocSystem.API.csproj \
             --configuration Release \
             --no-build \
+            --runtime linux-x64 \
+            --self-contained false \
             --output publish
 
       - name: Create deployment zip
