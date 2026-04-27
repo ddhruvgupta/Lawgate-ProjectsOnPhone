@@ -60,9 +60,7 @@ jobs:
           dotnet publish LegalDocSystem.API/LegalDocSystem.API.csproj \
             --configuration Release \
             --no-build \
-            --output publish \
-            --runtime linux-x64 \
-            --self-contained false
+            --output publish
 
       - name: Create deployment zip
         working-directory: backend/publish
