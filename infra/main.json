@@ -4,8 +4,8 @@
   "metadata": {
     "_generator": {
       "name": "bicep",
-      "version": "0.41.2.15936",
-      "templateHash": "13508856694966884657"
+      "version": "0.42.1.51946",
+      "templateHash": "2273375799308183174"
     }
   },
   "parameters": {
@@ -63,6 +63,20 @@
         "description": "JWT signing secret key — minimum 32 characters, generated from a CSPRNG"
       }
     },
+    "existingDbServerName": {
+      "type": "string",
+      "defaultValue": "",
+      "metadata": {
+        "description": "Existing PostgreSQL flexible server name — set to empty string to create a new one"
+      }
+    },
+    "dbAdminLogin": {
+      "type": "string",
+      "defaultValue": "lawgate_admin",
+      "metadata": {
+        "description": "PostgreSQL administrator login username for the existing server"
+      }
+    },
     "externalIdTenantId": {
       "type": "string",
       "defaultValue": "",
@@ -82,9 +96,32 @@
     "suffix": "[uniqueString(resourceGroup().id)]",
     "namePrefix": "[format('{0}-{1}', parameters('appName'), parameters('environment'))]",
     "keyVaultName": "[format('lg-kv-{0}', take(variables('suffix'), 10))]",
-    "keyVaultUri": "[format('https://{0}.vault.azure.net/', variables('keyVaultName'))]"
+    "keyVaultUri": "[format('https://{0}.{1}/', variables('keyVaultName'), environment().suffixes.keyvaultDns)]",
+    "useExistingDb": "[not(equals(parameters('existingDbServerName'), ''))]",
+    "newDbServerName": "[format('{0}-db-{1}', variables('namePrefix'), take(variables('suffix'), 6))]",
+    "dbServerFqdn": "[if(variables('useExistingDb'), format('{0}.postgres.database.azure.com', parameters('existingDbServerName')), format('{0}.postgres.database.azure.com', variables('newDbServerName')))]"
   },
   "resources": [
+    {
+      "condition": "[variables('useExistingDb')]",
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/{1}', if(variables('useExistingDb'), parameters('existingDbServerName'), 'placeholder'), 'lawgate_db')]",
+      "properties": {
+        "charset": "UTF8",
+        "collation": "en_US.utf8"
+      }
+    },
+    {
+      "condition": "[variables('useExistingDb')]",
+      "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
+      "apiVersion": "2023-12-01-preview",
+      "name": "[format('{0}/{1}', if(variables('useExistingDb'), parameters('existingDbServerName'), 'placeholder'), 'AllowAzureServices')]",
+      "properties": {
+        "startIpAddress": "0.0.0.0",
+        "endIpAddress": "0.0.0.0"
+      }
+    },
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -111,8 +148,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "1737058430754576457"
+              "version": "0.42.1.51946",
+              "templateHash": "9658151302031837450"
             }
           },
           "parameters": {
@@ -231,8 +268,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "546921360021814457"
+              "version": "0.42.1.51946",
+              "templateHash": "7684444345864351665"
             }
           },
           "parameters": {
@@ -328,6 +365,7 @@
       }
     },
     {
+      "condition": "[not(variables('useExistingDb'))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "database",
@@ -341,10 +379,10 @@
             "value": "[parameters('location')]"
           },
           "serverName": {
-            "value": "[format('{0}-db-{1}', variables('namePrefix'), take(variables('suffix'), 6))]"
+            "value": "[variables('newDbServerName')]"
           },
           "administratorLogin": {
-            "value": "lawgate_admin"
+            "value": "[parameters('dbAdminLogin')]"
           },
           "administratorLoginPassword": {
             "value": "[parameters('postgresAdminPassword')]"
@@ -359,8 +397,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "11174309980069706406"
+              "version": "0.42.1.51946",
+              "templateHash": "10024947488627738933"
             }
           },
           "parameters": {
@@ -529,8 +567,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "14883034698864512464"
+              "version": "0.42.1.51946",
+              "templateHash": "2502958017157208931"
             }
           },
           "parameters": {
@@ -580,13 +618,6 @@
             "staticWebAppName": {
               "type": "string",
               "value": "[parameters('staticWebAppName')]"
-            },
-            "deploymentToken": {
-              "type": "string",
-              "metadata": {
-                "description": "Deployment token for GitHub Actions — store as AZURE_STATIC_WEB_APPS_API_TOKEN secret"
-              },
-              "value": "[listSecrets(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2024-04-01').properties.apiKey]"
             }
           }
         }
@@ -633,8 +664,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "3572349969410537291"
+              "version": "0.42.1.51946",
+              "templateHash": "6054208101130681357"
             }
           },
           "parameters": {
@@ -688,9 +719,6 @@
                 "description": "Azure External ID API app client ID — leave empty until setup-external-id.ps1 is run"
               }
             }
-          },
-          "variables": {
-            "kvRef": "https://"
           },
           "resources": [
             {
@@ -755,11 +783,11 @@
                       "value": "1440"
                     },
                     {
-                      "name": "AzureStorage__ConnectionString",
+                      "name": "ConnectionStrings__BlobStorage",
                       "value": "[format('@Microsoft.KeyVault(SecretUri={0}secrets/AzureStorageConnectionString/)', parameters('keyVaultUri'))]"
                     },
                     {
-                      "name": "AzureStorage__ContainerName",
+                      "name": "BlobStorage__ContainerName",
                       "value": "legal-documents"
                     },
                     {
@@ -829,142 +857,6 @@
     {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
-      "name": "communication",
-      "properties": {
-        "expressionEvaluationOptions": {
-          "scope": "inner"
-        },
-        "mode": "Incremental",
-        "parameters": {
-          "communicationServiceName": {
-            "value": "[format('{0}-acs-{1}', variables('namePrefix'), take(variables('suffix'), 6))]"
-          },
-          "dataLocation": {
-            "value": "India"
-          }
-        },
-        "template": {
-          "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "contentVersion": "1.0.0.0",
-          "metadata": {
-            "_generator": {
-              "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "8925156109564789810"
-            }
-          },
-          "parameters": {
-            "communicationServiceName": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 63,
-              "metadata": {
-                "description": "Name of the Azure Communication Services resource — globally unique, 1-63 alphanumeric and hyphen chars"
-              }
-            },
-            "dataLocation": {
-              "type": "string",
-              "defaultValue": "India",
-              "allowedValues": [
-                "Africa",
-                "Asia Pacific",
-                "Australia",
-                "Brazil",
-                "Canada",
-                "Europe",
-                "France",
-                "Germany",
-                "India",
-                "Japan",
-                "Korea",
-                "Norway",
-                "Switzerland",
-                "UAE",
-                "UK",
-                "United States"
-              ],
-              "metadata": {
-                "description": "Data location — where communication data at rest is stored"
-              }
-            }
-          },
-          "variables": {
-            "acsLocation": "global"
-          },
-          "resources": [
-            {
-              "type": "Microsoft.Communication/emailServices",
-              "apiVersion": "2023-04-01",
-              "name": "[format('{0}-email', take(parameters('communicationServiceName'), 56))]",
-              "location": "[variables('acsLocation')]",
-              "properties": {
-                "dataLocation": "[parameters('dataLocation')]"
-              }
-            },
-            {
-              "type": "Microsoft.Communication/emailServices/domains",
-              "apiVersion": "2023-04-01",
-              "name": "[format('{0}/{1}', format('{0}-email', take(parameters('communicationServiceName'), 56)), 'AzureManagedDomain')]",
-              "location": "[variables('acsLocation')]",
-              "properties": {
-                "domainManagement": "AzureManaged"
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Communication/emailServices', format('{0}-email', take(parameters('communicationServiceName'), 56)))]"
-              ]
-            },
-            {
-              "type": "Microsoft.Communication/communicationServices",
-              "apiVersion": "2023-04-01",
-              "name": "[parameters('communicationServiceName')]",
-              "location": "[variables('acsLocation')]",
-              "properties": {
-                "dataLocation": "[parameters('dataLocation')]",
-                "linkedDomains": [
-                  "[resourceId('Microsoft.Communication/emailServices/domains', format('{0}-email', take(parameters('communicationServiceName'), 56)), 'AzureManagedDomain')]"
-                ]
-              },
-              "dependsOn": [
-                "[resourceId('Microsoft.Communication/emailServices/domains', format('{0}-email', take(parameters('communicationServiceName'), 56)), 'AzureManagedDomain')]"
-              ]
-            }
-          ],
-          "outputs": {
-            "communicationServiceId": {
-              "type": "string",
-              "metadata": {
-                "description": "Resource ID of the Communication Services instance"
-              },
-              "value": "[resourceId('Microsoft.Communication/communicationServices', parameters('communicationServiceName'))]"
-            },
-            "communicationServiceName": {
-              "type": "string",
-              "metadata": {
-                "description": "Name of the Communication Services instance"
-              },
-              "value": "[parameters('communicationServiceName')]"
-            },
-            "primaryConnectionString": {
-              "type": "string",
-              "metadata": {
-                "description": "Primary connection string for the Communication Services instance — stored in Key Vault at deploy time, never surfaced after that"
-              },
-              "value": "[listKeys(resourceId('Microsoft.Communication/communicationServices', parameters('communicationServiceName')), '2023-04-01').primaryConnectionString]"
-            },
-            "senderDomain": {
-              "type": "string",
-              "metadata": {
-                "description": "Azure Managed Domain sender domain — construct from address as DoNotReply@<senderDomain>"
-              },
-              "value": "[reference(resourceId('Microsoft.Communication/emailServices/domains', format('{0}-email', take(parameters('communicationServiceName'), 56)), 'AzureManagedDomain'), '2023-04-01').mailFromSenderDomain]"
-            }
-          }
-        }
-      }
-    },
-    {
-      "type": "Microsoft.Resources/deployments",
-      "apiVersion": "2025-04-01",
       "name": "keyvault",
       "properties": {
         "expressionEvaluationOptions": {
@@ -979,7 +871,7 @@
             "value": "[variables('keyVaultName')]"
           },
           "databaseConnectionString": {
-            "value": "[format('Host={0};Database=lawgate_db;Username=lawgate_admin;Password={1};SslMode=Require;TrustServerCertificate=false', reference(resourceId('Microsoft.Resources/deployments', 'database'), '2025-04-01').outputs.serverFqdn.value, parameters('postgresAdminPassword'))]"
+            "value": "[format('Host={0};Database=lawgate_db;Username={1};Password={2};SslMode=Require;TrustServerCertificate=false', variables('dbServerFqdn'), parameters('dbAdminLogin'), parameters('postgresAdminPassword'))]"
           },
           "jwtSecretKey": {
             "value": "[parameters('jwtSecretKey')]"
@@ -991,10 +883,10 @@
             "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appService'), '2025-04-01').outputs.principalId.value]"
           },
           "communicationServiceConnectionString": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'communication'), '2025-04-01').outputs.primaryConnectionString.value]"
+            "value": "[listKeys(resourceId('Microsoft.Communication/communicationServices', 'lawgate-prod-acs'), '2023-04-01').primaryConnectionString]"
           },
           "acsSenderDomain": {
-            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'communication'), '2025-04-01').outputs.senderDomain.value]"
+            "value": "[reference(resourceId('Microsoft.Communication/emailServices/domains', 'lawgate-prod-acs-email', 'AzureManagedDomain'), '2023-04-01').mailFromSenderDomain]"
           }
         },
         "template": {
@@ -1003,8 +895,8 @@
           "metadata": {
             "_generator": {
               "name": "bicep",
-              "version": "0.41.2.15936",
-              "templateHash": "6102759522284434306"
+              "version": "0.42.1.51946",
+              "templateHash": "6804475017067214662"
             }
           },
           "parameters": {
@@ -1077,7 +969,6 @@
                 "enabledForTemplateDeployment": true,
                 "enableSoftDelete": true,
                 "softDeleteRetentionInDays": 7,
-                "enablePurgeProtection": false,
                 "networkAcls": {
                   "defaultAction": "Allow",
                   "bypass": "AzureServices"
@@ -1187,8 +1078,6 @@
       },
       "dependsOn": [
         "[resourceId('Microsoft.Resources/deployments', 'appService')]",
-        "[resourceId('Microsoft.Resources/deployments', 'communication')]",
-        "[resourceId('Microsoft.Resources/deployments', 'database')]",
         "[resourceId('Microsoft.Resources/deployments', 'storage')]"
       ]
     }
@@ -1220,7 +1109,7 @@
       "metadata": {
         "description": "PostgreSQL server fully qualified domain name"
       },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'database'), '2025-04-01').outputs.serverFqdn.value]"
+      "value": "[variables('dbServerFqdn')]"
     },
     "storageAccountName": {
       "type": "string",
@@ -1234,7 +1123,7 @@
       "metadata": {
         "description": "Azure Communication Services resource name"
       },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'communication'), '2025-04-01').outputs.communicationServiceName.value]"
+      "value": "lawgate-prod-acs"
     },
     "appInsightsConnectionString": {
       "type": "string",
@@ -1242,13 +1131,6 @@
         "description": "App Insights connection string (safe — not a secret)"
       },
       "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value]"
-    },
-    "staticWebAppDeploymentToken": {
-      "type": "string",
-      "metadata": {
-        "description": "Static Web App deployment token — add to GitHub Secrets as AZURE_STATIC_WEB_APPS_API_TOKEN"
-      },
-      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'staticWebApp'), '2025-04-01').outputs.deploymentToken.value]"
     }
   }
 }
