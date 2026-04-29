@@ -28,6 +28,12 @@ param skuName string = 'Standard_B1ms'
 @maxValue(35)
 param backupRetentionDays int = 7
 
+@description('Delegated subnet resource ID — required for VNet injection (private access mode). Leave empty to use public access.')
+param delegatedSubnetResourceId string = ''
+
+@description('Private DNS zone resource ID — required when delegatedSubnetResourceId is set')
+param privateDnsZoneArmResourceId string = ''
+
 // ---------------------------------------------------------------------------
 // PostgreSQL Flexible Server
 // ---------------------------------------------------------------------------
@@ -64,6 +70,15 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-pr
       startHour: 2
       startMinute: 0
     }
+    // Private access (VNet injection): server lives in the delegated subnet with no public endpoint.
+    // If subnet/DNS params are omitted the server falls back to public access — not recommended.
+    network: !empty(delegatedSubnetResourceId) ? {
+      delegatedSubnetResourceId: delegatedSubnetResourceId
+      privateDnsZoneArmResourceId: privateDnsZoneArmResourceId
+      publicNetworkAccess: 'Disabled'
+    } : {
+      publicNetworkAccess: 'Disabled'
+    }
   }
 }
 
@@ -77,20 +92,6 @@ resource applicationDatabase 'Microsoft.DBforPostgreSQL/flexibleServers/database
   properties: {
     charset: 'UTF8'
     collation: 'en_US.utf8'
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Firewall rules
-// ---------------------------------------------------------------------------
-
-// Allow Azure services (App Service, migrations runner) — uses private routing within Azure
-resource allowAzureServices 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = {
-  parent: postgresServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
   }
 }
 

@@ -22,6 +22,9 @@ param externalIdTenantId string = ''
 @description('Azure External ID API app client ID — leave empty until setup-external-id.ps1 is run')
 param externalIdAudience string = ''
 
+@description('Subnet resource ID for regional VNet integration — routes App Service outbound traffic through the VNet to reach PostgreSQL via private endpoint')
+param subnetId string = ''
+
 // ---------------------------------------------------------------------------
 // App Service Plan — Linux B1 (upgrade to P1v3 for production traffic)
 // ---------------------------------------------------------------------------
@@ -52,13 +55,23 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
   properties: {
     serverFarmId: appServicePlan.id
     httpsOnly: true
+    // Regional VNet integration — routes all outbound traffic through the VNet
+    // so the app can reach PostgreSQL via its private endpoint without going over
+    // the public internet. Empty string disables it (local dev / first deploy).
+    virtualNetworkSubnetId: !empty(subnetId) ? subnetId : null
     siteConfig: {
       linuxFxVersion: 'DOTNETCORE|10.0'
+      // Explicit startup command prevents Oryx from picking the wrong DLL when
+      // the publish output contains multiple .runtimeconfig.json files
+      // (e.g. BuildHost-netcore from Roslyn/EF Core tooling).
+      appCommandLine: 'dotnet LegalDocSystem.API.dll'
       alwaysOn: true
       ftpsState: 'Disabled'
       http20Enabled: true
       minTlsVersion: '1.2'
       healthCheckPath: '/health'
+      // Route ALL outbound traffic through the VNet (not just RFC 1918 addresses)
+      vnetRouteAllEnabled: !empty(subnetId)
       appSettings: [
         // Application Insights — safe to store directly (not a secret)
         {

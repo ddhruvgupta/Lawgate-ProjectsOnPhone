@@ -105,7 +105,10 @@ jobs:
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.AZURE_DATABASE_CONNECTION_STRING }}
 
-      - name: Remove PostgreSQL firewall rule
+      - name: Close PostgreSQL public access after migrations
+        # Always runs — re-disables public network access and removes the
+        # temporary firewall rule regardless of whether migrations succeeded.
+        # The App Service reaches the DB exclusively via the private endpoint.
         if: always()
         run: |
           az postgres flexible-server firewall-rule delete \
@@ -113,6 +116,10 @@ jobs:
             --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
             --rule-name "GitHubActions-${{ github.run_id }}" \
             --yes 2>/dev/null || true
+          az postgres flexible-server update \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --public-access disabled 2>/dev/null || true
 
       # -----------------------------------------------------------------------
       # Deploy to Azure App Service

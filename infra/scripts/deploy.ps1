@@ -57,8 +57,9 @@ param(
     [Parameter(Mandatory)]
     [string] $ResourceGroup,
 
-    [Parameter(Mandatory)]
-    [string] $Location,
+    # Only required when the resource group does not yet exist.
+    # Resource locations (Central India, East Asia, etc.) come from main.bicepparam.
+    [string] $Location = '',
 
     [string] $Subscription = '',
 
@@ -123,6 +124,20 @@ function Get-SecureStringPlainText([System.Security.SecureString]$ss) {
     finally { [System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($ptr) }
 }
 
+# Try to read a secret from the Key Vault in the given resource group.
+# Returns $null if the vault doesn't exist yet or the secret is not found.
+function Read-SecretFromKeyVault([string]$rg, [string]$secretName) {
+    $savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $kvName = az keyvault list --resource-group $rg --query '[0].name' -o tsv 2>$null
+    $ErrorActionPreference = $savedEAP
+    if (-not $kvName) { return $null }
+    $savedEAP2 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $value = az keyvault secret show --vault-name $kvName --name $secretName --query 'value' -o tsv 2>$null
+    $ErrorActionPreference = $savedEAP2
+    if ($value) { return $value }
+    return $null
+}
+
 # ---------------------------------------------------------------------------
 # Step 1 - Prerequisites
 # ---------------------------------------------------------------------------
@@ -176,6 +191,7 @@ Write-Step 3 "Resource group: $ResourceGroup"
 
 $rgExists = az group exists --name $ResourceGroup | ConvertFrom-Json
 if (-not $rgExists) {
+    if (-not $Location) { throw "-Location is required when the resource group does not yet exist." }
     Write-Host "  Creating resource group..."
     az group create --name $ResourceGroup --location $Location | Out-Null
     Write-Host "  Created: $ResourceGroup in $Location"
@@ -190,14 +206,31 @@ if (-not $rgExists) {
 if (-not $SkipBicep) {
     Write-Step 4 "Bicep infrastructure deployment"
 
-    # Collect secure params interactively if not supplied
+    # Resolve secure params: CLI flag > Key Vault > interactive prompt.
+    # On re-runs both values already exist in Key Vault so no prompt appears.
     if (-not $PostgresPassword) {
-        $pgSecure  = Read-Host "  Enter PostgreSQL admin password" -AsSecureString
-        $PostgresPassword = Get-SecureStringPlainText $pgSecure
+        Write-Host "  Looking up PostgreSQL password from Key Vault..."
+        $dbConnStr = Read-SecretFromKeyVault $ResourceGroup 'DatabaseConnectionString'
+        if ($dbConnStr) {
+            # Parse Password=... from the Npgsql connection string
+            $PostgresPassword = ([regex]'(?i)Password=([^;]+)').Match($dbConnStr).Groups[1].Value
+        }
+        if (-not $PostgresPassword) {
+            $pgSecure = Read-Host "  Enter PostgreSQL admin password" -AsSecureString
+            $PostgresPassword = Get-SecureStringPlainText $pgSecure
+        } else {
+            Write-Host "  PostgreSQL password read from Key Vault" -ForegroundColor DarkGray
+        }
     }
     if (-not $JwtSecret) {
-        $jwtSecure = Read-Host "  Enter JWT secret key (min 32 chars)" -AsSecureString
-        $JwtSecret = Get-SecureStringPlainText $jwtSecure
+        Write-Host "  Looking up JWT secret from Key Vault..."
+        $JwtSecret = Read-SecretFromKeyVault $ResourceGroup 'JwtSecretKey'
+        if (-not $JwtSecret) {
+            $jwtSecure = Read-Host "  Enter JWT secret key (min 32 chars)" -AsSecureString
+            $JwtSecret = Get-SecureStringPlainText $jwtSecure
+        } else {
+            Write-Host "  JWT secret read from Key Vault" -ForegroundColor DarkGray
+        }
     }
     if ($JwtSecret.Length -lt 32) {
         throw "JWT secret must be at least 32 characters"
@@ -274,17 +307,33 @@ if (-not $SkipBicep) {
 # ---------------------------------------------------------------------------
 
 if (-not $SkipMigrations) {
-    Write-Step 5 "Opening PostgreSQL firewall for local migrations"
-
-    $myIp = (Invoke-RestMethod 'https://api.ipify.org?format=json').ip
-    Write-Host "  Local IP: $myIp"
-
-    # Find the PostgreSQL server in the resource group
+    # Detect whether the PostgreSQL server uses VNet injection (private access).
+    # VNet-injected servers have no public DNS entry — the FQDN only resolves
+    # inside the VNet. Migrations run automatically on App Service startup instead.
     $pgServer = az postgres flexible-server list `
         --resource-group $ResourceGroup `
-        --query '[0].name' -o tsv
+        --query '[0].name' -o tsv 2>$null
 
-    if (-not $pgServer) { throw "No PostgreSQL server found in $ResourceGroup" }
+    $isVnetInjected = $false
+    if ($pgServer) {
+        $delegatedSubnet = az postgres flexible-server show `
+            --name $pgServer --resource-group $ResourceGroup `
+            --query 'network.delegatedSubnetResourceId' -o tsv 2>$null
+        $isVnetInjected = -not [string]::IsNullOrEmpty($delegatedSubnet)
+    }
+
+    if ($isVnetInjected) {
+        Write-Step "5+6" "Skipping local migrations — VNet-injected server"
+        Write-Host "  Server '$pgServer' uses private access (VNet injection)." -ForegroundColor DarkYellow
+        Write-Host "  Its FQDN has no public DNS entry and cannot be reached from this machine." -ForegroundColor DarkYellow
+        Write-Host "  Migrations will be applied automatically on App Service startup via Program.cs." -ForegroundColor DarkYellow
+    } else {
+        Write-Step 5 "Opening PostgreSQL firewall for local migrations"
+
+        $myIp = (Invoke-RestMethod 'https://api.ipify.org?format=json').ip
+        Write-Host "  Local IP: $myIp"
+
+        # $pgServer already resolved above
 
     # Ensure the server is started (it may be stopped)
     $pgState = az postgres flexible-server show --name $pgServer --resource-group $ResourceGroup --query 'state' -o tsv 2>$null
@@ -363,6 +412,7 @@ if (-not $SkipMigrations) {
         --rule-name "LocalMigrations-$(Get-Date -Format 'yyyyMMddHHmm')" `
         --yes 2>$null
     Write-Host "  Temporary firewall rule removed"
+    } # end non-VNet-injected migrations block
 } else {
     Write-Step "5+6" "Skipping migrations (--SkipMigrations)"
 }
@@ -426,7 +476,11 @@ if (-not $SkipFrontend) {
         $env:VITE_API_URL = "$($script:ApiUrl)/api"
 
         Write-Host "  Building React app (production)..."
+        $savedEAP8 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
         npm run build 2>&1 | Where-Object { $_ -match 'error|warning|built in' }
+        $buildExit = $LASTEXITCODE
+        $ErrorActionPreference = $savedEAP8
+        if ($buildExit -ne 0) { throw "Frontend build failed (exit $buildExit)" }
 
         # Static Web Apps are deployed via the deployment token from Bicep.
         # If the Static Web Apps CLI is present, use it; otherwise print instructions.

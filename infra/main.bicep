@@ -34,6 +34,9 @@ param existingDbServerName string = ''
 @description('PostgreSQL administrator login username for the existing server')
 param dbAdminLogin string = 'lawgate_admin'
 
+@description('Existing VNet name — set to reuse a pre-existing VNet and its subnets instead of creating a new one')
+param existingVnetName string = ''
+
 @description('Azure External ID external tenant ID — populate after running scripts/setup-external-id.ps1')
 param externalIdTenantId string = ''
 
@@ -53,7 +56,9 @@ var namePrefix = '${appName}-${environment}'
 // waiting for the Key Vault module to deploy (avoids a circular dependency)
 var keyVaultName = 'lg-kv-${take(suffix, 10)}'
 // Use environment() to avoid hardcoded cloud URLs (supports sovereign clouds)
-var keyVaultUri = 'https://${keyVaultName}.${az.environment().suffixes.keyvaultDns}/'
+// Note: az.environment().suffixes.keyvaultDns already includes the leading dot
+// (e.g. '.vault.azure.net'), so we must NOT add another dot before it.
+var keyVaultUri = 'https://${keyVaultName}${az.environment().suffixes.keyvaultDns}/'
 
 // ===========================================================================
 // Modules
@@ -82,9 +87,22 @@ module storage 'modules/storage.bicep' = {
   }
 }
 
-// --- Database --------------------------------------------------------------
-// If an existing server name is supplied, reference it (avoids quota issues);
-// otherwise create a new one via the database module.
+// --- VNet (no dependencies) -------------------------------------------------
+// Provisions the VNet first so the postgres-subnet and private DNS zone IDs
+// are available before the database module runs.
+
+module vnet 'modules/vnet.bicep' = {
+  name: 'vnet'
+  params: {
+    location: location
+    vnetName: '${namePrefix}-vnet'
+    existingVnetName: existingVnetName
+  }
+}
+
+// --- Database (depends on: vnet) --------------------------------------------
+// If an existing server name is supplied, reference it; otherwise create a new
+// VNet-injected server via the database module.
 
 var useExistingDb = existingDbServerName != ''
 
@@ -102,16 +120,6 @@ resource existingAppDb 'Microsoft.DBforPostgreSQL/flexibleServers/databases@2023
   }
 }
 
-// Ensure Azure services firewall rule exists on the existing server
-resource existingDbFirewall 'Microsoft.DBforPostgreSQL/flexibleServers/firewallRules@2023-12-01-preview' = if (useExistingDb) {
-  parent: existingDbServer
-  name: 'AllowAzureServices'
-  properties: {
-    startIpAddress: '0.0.0.0'
-    endIpAddress: '0.0.0.0'
-  }
-}
-
 var newDbServerName = '${namePrefix}-db-${take(suffix, 6)}'
 
 module database 'modules/database.bicep' = if (!useExistingDb) {
@@ -122,6 +130,9 @@ module database 'modules/database.bicep' = if (!useExistingDb) {
     administratorLogin: dbAdminLogin
     administratorLoginPassword: postgresAdminPassword
     databaseName: 'lawgate_db'
+    // VNet injection — server has no public endpoint; all traffic via private IP
+    delegatedSubnetResourceId: vnet.outputs.postgresSubnetId
+    privateDnsZoneArmResourceId: vnet.outputs.privateDnsZoneId
   }
 }
 
@@ -155,6 +166,9 @@ module appService 'modules/app-service.bicep' = {
     corsOrigin: 'https://${staticWebApp.outputs.defaultHostname}'
     externalIdTenantId: externalIdTenantId
     externalIdAudience: externalIdApiClientId
+    // VNet integration — outbound traffic from the App Service routes through
+    // this delegated subnet, enabling it to reach the PostgreSQL private endpoint
+    subnetId: vnet.outputs.appServiceSubnetId
   }
 }
 
