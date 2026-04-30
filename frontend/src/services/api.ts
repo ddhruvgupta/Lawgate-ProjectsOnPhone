@@ -108,7 +108,7 @@ class ApiService {
   async refreshTokens(refreshToken: string): Promise<ApiResponse<TokenResponse>> {
     // Use raw axios to avoid the interceptor triggering infinitely
     const response = await axios.post<ApiResponse<TokenResponse>>(
-      `${API_BASE_URL}/auth/refresh`,
+      `${config.apiUrl}/auth/refresh`,
       { refreshToken },
       { headers: { 'Content-Type': 'application/json' } }
     );

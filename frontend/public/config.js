@@ -3,5 +3,7 @@
 // overwritten after build to retarget a different API without rebuilding.
 // The deployment pipeline should overwrite this file with env-specific values.
 window.__CONFIG__ = {
-  apiUrl: 'https://lawgate-prod-api-dztku2.azurewebsites.net/api',
+  // Overwritten by the deployment pipeline per environment.
+  // Leave empty in-repo so local dev falls back to VITE_API_URL.
+  apiUrl: '',
 };

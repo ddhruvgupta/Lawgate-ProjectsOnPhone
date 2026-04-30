@@ -16,5 +16,8 @@ declare global {
  * making it obvious in dev tools if neither is configured.
  */
 export const config: AppConfig = {
-  apiUrl: window.__CONFIG__?.apiUrl ?? import.meta.env.VITE_API_URL ?? '',
+  // Use window.__CONFIG__ only when it carries a non-empty URL (i.e. the
+  // deployment pipeline has overwritten public/config.js). Fall back to
+  // VITE_API_URL for local dev / build-time env vars.
+  apiUrl: window.__CONFIG__?.apiUrl || import.meta.env.VITE_API_URL || '',
 };
