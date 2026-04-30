@@ -96,7 +96,7 @@
     "suffix": "[uniqueString(resourceGroup().id)]",
     "namePrefix": "[format('{0}-{1}', parameters('appName'), parameters('environment'))]",
     "keyVaultName": "[format('lg-kv-{0}', take(variables('suffix'), 10))]",
-    "keyVaultUri": "[format('https://{0}.{1}/', variables('keyVaultName'), environment().suffixes.keyvaultDns)]",
+    "keyVaultUri": "[format('https://{0}{1}/', variables('keyVaultName'), environment().suffixes.keyvaultDns)]",
     "useExistingDb": "[not(equals(parameters('existingDbServerName'), ''))]",
     "newDbServerName": "[format('{0}-db-{1}', variables('namePrefix'), take(variables('suffix'), 6))]",
     "dbServerFqdn": "[if(variables('useExistingDb'), format('{0}.postgres.database.azure.com', parameters('existingDbServerName')), format('{0}.postgres.database.azure.com', variables('newDbServerName')))]"

@@ -72,11 +72,14 @@ jobs:
       # EF Core migrations
       # -----------------------------------------------------------------------
       - name: Install EF Core tools
-        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         run: dotnet tool install --global dotnet-ef
 
       - name: Open PostgreSQL firewall for CI runner
-        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        # Only runs on manual dispatch — GitHub runners cannot reach a VNet-injected (private)
+        # PostgreSQL server on push events, so migrations are skipped and delegated to
+        # Program.cs startup migration on App Service (which is VNet-integrated).
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         run: |
           RUNNER_IP=$(curl -s https://api.ipify.org)
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
@@ -99,20 +102,40 @@ jobs:
             --end-ip-address $RUNNER_IP
 
       - name: Run EF Core migrations
-        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         working-directory: backend/LegalDocSystem.API
         run: dotnet ef database update --no-build
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.AZURE_DATABASE_CONNECTION_STRING }}
 
-      - name: Remove PostgreSQL firewall rule
-        if: always()
+      - name: Close PostgreSQL public access after migrations
+        # Runs whenever the firewall was opened (workflow_dispatch + migrations not skipped),
+        # even if the migration step failed — ensures the DB is never left publicly accessible.
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         run: |
+          set -euo pipefail
+
           az postgres flexible-server firewall-rule delete \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
             --rule-name "GitHubActions-${{ github.run_id }}" \
             --yes 2>/dev/null || true
+
+          az postgres flexible-server update \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --public-access disabled
+
+          public_access_state="$(az postgres flexible-server show \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --query 'network.publicNetworkAccess' \
+            --output tsv)"
+
+          if [ "${public_access_state}" != "Disabled" ]; then
+            echo "Expected PostgreSQL public access to be Disabled, but found '${public_access_state}'."
+            exit 1
+          fi
 
       # -----------------------------------------------------------------------
       # Deploy to Azure App Service
