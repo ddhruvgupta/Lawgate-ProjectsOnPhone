@@ -126,10 +126,27 @@ function Get-SecureStringPlainText([System.Security.SecureString]$ss) {
 
 # Try to read a secret from the Key Vault in the given resource group.
 # Returns $null if the vault doesn't exist yet or the secret is not found.
-function Read-SecretFromKeyVault([string]$rg, [string]$secretName) {
-    $savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-    $kvName = az keyvault list --resource-group $rg --query '[0].name' -o tsv 2>$null
-    $ErrorActionPreference = $savedEAP
+function Read-SecretFromKeyVault([string]$rg, [string]$secretName, [string]$keyVaultName = $null) {
+    $kvName = $keyVaultName
+
+    if (-not $kvName) {
+        $savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+        $keyVaultNames = @(az keyvault list --resource-group $rg --query '[].name' -o tsv 2>$null)
+        $ErrorActionPreference = $savedEAP
+
+        if (-not $keyVaultNames -or $keyVaultNames.Count -eq 0) { return $null }
+
+        # Prefer vaults matching the project naming convention (lg-kv-*)
+        $matchingNames = @($keyVaultNames | Where-Object { $_ -like 'lg-kv-*' })
+        $candidates = if ($matchingNames.Count -gt 0) { $matchingNames } else { $keyVaultNames }
+
+        if ($candidates.Count -gt 1) {
+            throw "Multiple Key Vaults found in resource group '$rg'. Pass the expected Key Vault name explicitly to Read-SecretFromKeyVault."
+        }
+
+        $kvName = $candidates[0]
+    }
+
     if (-not $kvName) { return $null }
     $savedEAP2 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
     $value = az keyvault secret show --vault-name $kvName --name $secretName --query 'value' -o tsv 2>$null
@@ -313,6 +330,10 @@ if (-not $SkipMigrations) {
     $pgServer = az postgres flexible-server list `
         --resource-group $ResourceGroup `
         --query '[0].name' -o tsv 2>$null
+
+    if ([string]::IsNullOrWhiteSpace($pgServer)) {
+        throw "No Azure Database for PostgreSQL Flexible Server was found in resource group '$ResourceGroup'. Cannot continue with firewall configuration or migrations."
+    }
 
     $isVnetInjected = $false
     if ($pgServer) {

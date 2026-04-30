@@ -7,6 +7,12 @@ param vnetName string
 @description('Name of an existing VNet to reuse. Set this to skip VNet creation and reference existing subnets and DNS zone.')
 param existingVnetName string = ''
 
+@description('App Service subnet name inside the existing VNet. Only used when existingVnetName is set.')
+param existingAppServiceSubnetName string = 'lawgate-prod-webappAppSubnet'
+
+@description('PostgreSQL Flexible Server subnet name inside the existing VNet. Only used when existingVnetName is set.')
+param existingPostgresSubnetName string = 'lawgate-prod-webappDbSubnet'
+
 var useExistingVnet = existingVnetName != ''
 var resolvedVnetName = useExistingVnet ? existingVnetName : vnetName
 
@@ -79,8 +85,8 @@ resource newDnsVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2
 
 // Subnet names differ between the existing VNet (manually provisioned) and
 // new VNets created by this module.
-var appServiceSubnetName = useExistingVnet ? 'lawgate-prod-webappAppSubnet' : 'app-service-subnet'
-var postgresSubnetName   = useExistingVnet ? 'lawgate-prod-webappDbSubnet'  : 'postgres-subnet'
+var appServiceSubnetName = useExistingVnet ? existingAppServiceSubnetName : 'app-service-subnet'
+var postgresSubnetName   = useExistingVnet ? existingPostgresSubnetName : 'postgres-subnet'
 
 // ===========================================================================
 // Outputs — built with resourceId() to avoid BCP318 on conditional resources

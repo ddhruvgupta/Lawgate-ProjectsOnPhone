@@ -77,7 +77,7 @@ resource postgresServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-pr
       privateDnsZoneArmResourceId: privateDnsZoneArmResourceId
       publicNetworkAccess: 'Disabled'
     } : {
-      publicNetworkAccess: 'Disabled'
+      publicNetworkAccess: 'Enabled'
     }
   }
 }

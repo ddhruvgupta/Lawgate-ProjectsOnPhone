@@ -139,11 +139,15 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// Apply pending EF Core migrations on startup.
+// Apply pending EF Core migrations on startup in non-Development environments.
+// Development uses the dedicated migrate-and-seed block further below.
 // This runs inside the VNet (App Service has VNet integration), so the DB is reachable.
 // db.Database.Migrate() is idempotent — safe to call on every startup.
-using (var scope = app.Services.CreateScope())
+// NOTE: This app runs as a single App Service instance; scale-out migrations
+// would need an advisory lock or a dedicated migration job.
+if (!app.Environment.IsDevelopment())
 {
+    using var scope = app.Services.CreateScope();
     var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
     try

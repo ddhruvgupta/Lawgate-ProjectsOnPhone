@@ -72,11 +72,14 @@ jobs:
       # EF Core migrations
       # -----------------------------------------------------------------------
       - name: Install EF Core tools
-        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         run: dotnet tool install --global dotnet-ef
 
       - name: Open PostgreSQL firewall for CI runner
-        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        # Only runs on manual dispatch — GitHub runners cannot reach a VNet-injected (private)
+        # PostgreSQL server on push events, so migrations are skipped and delegated to
+        # Program.cs startup migration on App Service (which is VNet-integrated).
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         run: |
           RUNNER_IP=$(curl -s https://api.ipify.org)
           echo "RUNNER_IP=$RUNNER_IP" >> $GITHUB_ENV
@@ -99,17 +102,16 @@ jobs:
             --end-ip-address $RUNNER_IP
 
       - name: Run EF Core migrations
-        if: ${{ github.event.inputs.skip_migrations != 'true' }}
+        if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         working-directory: backend/LegalDocSystem.API
         run: dotnet ef database update --no-build
         env:
           ConnectionStrings__DefaultConnection: ${{ secrets.AZURE_DATABASE_CONNECTION_STRING }}
 
       - name: Close PostgreSQL public access after migrations
-        # Always runs — re-disables public network access and removes the
-        # temporary firewall rule regardless of whether migrations succeeded.
-        # The App Service reaches the DB exclusively via the private endpoint.
-        if: always()
+        # Runs whenever the firewall was opened (workflow_dispatch + migrations not skipped),
+        # even if the migration step failed — ensures the DB is never left publicly accessible.
+        if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         run: |
           az postgres flexible-server firewall-rule delete \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
