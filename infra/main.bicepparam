@@ -38,11 +38,19 @@ param jwtSecretKey = ''            // REQUIRED — set via CLI or environment
 // instead of provisioning a new one (avoids quota issues on fresh subscriptions)
 // ===========================================================================
 
-// Name of the existing PostgreSQL flexible server in the resource group
+// Name of the existing PostgreSQL flexible server in the resource group.
+// Leave empty to create a new VNet-injected server (private access mode, no public endpoint).
 param existingDbServerName = 'lawgate-prod-webapp-server'
 
 // Admin login for the existing server (auto-generated when server was first created)
 param dbAdminLogin = 'osxgosjnrg'
+
+// ===========================================================================
+// Existing VNet — reuse the pre-provisioned VNet and its subnets
+// ===========================================================================
+
+// Leave empty to create a new VNet (e.g. on a clean subscription)
+param existingVnetName = 'lawgate-prod-webappVnet'
 
 // ===========================================================================
 // External ID — populate AFTER running scripts/setup-external-id.ps1

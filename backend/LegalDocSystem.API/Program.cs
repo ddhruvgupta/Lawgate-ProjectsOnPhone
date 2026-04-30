@@ -139,6 +139,41 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+// Apply pending EF Core migrations on startup in non-Development environments.
+// Development uses the dedicated migrate-and-seed block further below.
+// This runs inside the VNet (App Service has VNet integration), so the DB is reachable.
+// db.Database.Migrate() is idempotent — safe to call on every startup.
+// NOTE: This app runs as a single App Service instance; scale-out migrations
+// would need an advisory lock or a dedicated migration job.
+if (!app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
+    try
+    {
+        // Acquire a PostgreSQL session-level advisory lock before running migrations.
+        // This serialises concurrent startup migrations during scale-out events —
+        // only one instance migrates at a time; others block until it completes.
+        // The lock is automatically released when this connection closes (scope disposal).
+        const long MigrationLockId = 0x4C617767617465L; // "Lawgate" in ASCII as int64
+        db.Database.OpenConnection();
+        using (var lockCmd = db.Database.GetDbConnection().CreateCommand())
+        {
+            lockCmd.CommandText = $"SELECT pg_advisory_lock({MigrationLockId})";
+            lockCmd.ExecuteNonQuery();
+        }
+        logger.LogInformation("Migration advisory lock acquired; applying pending migrations");
+        db.Database.Migrate();
+        logger.LogInformation("Database migrations applied successfully");
+    }
+    catch (Exception ex)
+    {
+        logger.LogError(ex, "Failed to apply database migrations on startup");
+        throw;
+    }
+}
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
