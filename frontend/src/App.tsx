@@ -4,6 +4,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { ToastProvider } from './contexts/ToastContext';
 import { ToastContainer } from './components/ToastContainer';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { GuestRoute } from './components/GuestRoute';
 import { Layout } from './components/Layout';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginPage } from './pages/LoginPage';
@@ -14,8 +15,11 @@ import { VerifyEmailPage } from './pages/VerifyEmailPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ProjectsPage } from './pages/ProjectsPage';
 import { ProjectDetailPage } from './pages/ProjectDetailPage';
+import { DocumentsPage } from './pages/DocumentsPage';
 import { TeamPage } from './pages/TeamPage';
 import { ActivityPage } from './pages/ActivityPage';
+import { ResendVerificationPage } from './pages/ResendVerificationPage';
+import { NotFoundPage } from './pages/NotFoundPage';
 import { RoleGuard } from './components/RoleGuard';
 import { PlatformAdminPage } from './pages/admin/PlatformAdminPage';
 import { PlatformCompanyDetailPage } from './pages/admin/PlatformCompanyDetailPage';
@@ -36,10 +40,10 @@ function App() {
         <AuthProvider>
           <ToastProvider>
             <Routes>
-              {/* Public */}
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+              {/* Public — redirect to dashboard if already logged in (BUG-012) */}
+              <Route path="/login" element={<GuestRoute><LoginPage /></GuestRoute>} />
+              <Route path="/register" element={<GuestRoute><RegisterPage /></GuestRoute>} />
+              <Route path="/forgot-password" element={<GuestRoute><ForgotPasswordPage /></GuestRoute>} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
               <Route path="/verify-email" element={<VerifyEmailPage />} />
 
@@ -54,6 +58,8 @@ function App() {
                           <Route path="/dashboard" element={<DashboardPage />} />
                           <Route path="/projects" element={<ProjectsPage />} />
                           <Route path="/projects/:id" element={<ProjectDetailPage />} />
+                          <Route path="/documents" element={<DocumentsPage />} />
+                          <Route path="/resend-verification" element={<ResendVerificationPage />} />
                           <Route path="/team" element={
                             <RoleGuard allowedRoles={['CompanyOwner', 'Admin']}>
                               <TeamPage />
@@ -83,6 +89,8 @@ function App() {
                   </ProtectedRoute>
                 }
               />
+              {/* BUG-013: catch-all 404 for any unknown public paths */}
+              <Route path="*" element={<NotFoundPage />} />
             </Routes>
             <ToastContainer />
           </ToastProvider>

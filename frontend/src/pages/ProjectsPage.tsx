@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,7 +26,15 @@ const schema = z.object({
   status: z.enum(['Intake', 'Active', 'Discovery', 'Negotiation', 'Hearing', 'OnHold', 'Settled', 'Closed', 'Archived']).default('Intake'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return new Date(data.endDate) >= new Date(data.startDate);
+    }
+    return true;
+  },
+  { message: 'End date must be on or after start date', path: ['endDate'] }
+);
 
 type FormValues = z.infer<typeof schema>;
 
@@ -35,6 +43,15 @@ export const ProjectsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // BUG-010: auto-open modal when navigating here with ?new=1
+  useEffect(() => {
+    if (searchParams.get('new') === '1') {
+      setModalOpen(true);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
@@ -83,7 +100,11 @@ export const ProjectsPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-          <p className="text-sm text-gray-500 mt-1">{projects.length} project{projects.length !== 1 ? 's' : ''} in your firm</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {isLoading
+              ? 'Loading projects…'
+              : `${projects.length} project${projects.length !== 1 ? 's' : ''} in your firm`}
+          </p>
         </div>
         <button
           onClick={() => setModalOpen(true)}

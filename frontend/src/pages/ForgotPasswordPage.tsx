@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { APP_NAME } from '../constants/app';
 
 export const ForgotPasswordPage: React.FC = () => {
   const [email, setEmail] = useState('');
@@ -29,7 +30,7 @@ export const ForgotPasswordPage: React.FC = () => {
       <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Forgot your password?
+            {APP_NAME} — Forgot password?
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Enter your email and we'll send you a reset link.

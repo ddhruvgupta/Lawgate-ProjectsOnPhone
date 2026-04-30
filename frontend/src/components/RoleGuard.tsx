@@ -16,7 +16,7 @@ interface RoleGuardProps {
 export const RoleGuard: React.FC<RoleGuardProps> = ({ allowedRoles, children }) => {
   const { user } = useAuth();
 
-  if (!user || !allowedRoles.includes(user.role as UserRole)) {
+  if (!user || !allowedRoles.some((r) => r.toLowerCase() === user.role?.toLowerCase())) {
     return (
       <div className="flex flex-col items-center justify-center h-full min-h-[60vh] text-center px-4">
         <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-4">
