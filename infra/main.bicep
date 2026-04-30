@@ -106,6 +106,10 @@ module vnet 'modules/vnet.bicep' = {
 
 var useExistingDb = existingDbServerName != ''
 
+// NOTE: The existing-server path assumes the server uses private access (VNet injection).
+// This template does not create or manage firewall rules for existing servers.
+// If the existing server uses public network access, ensure an AllowAzureServices (or
+// equivalent IP-based) firewall rule is in place separately before deploying.
 resource existingDbServer 'Microsoft.DBforPostgreSQL/flexibleServers@2023-12-01-preview' existing = if (useExistingDb) {
   name: useExistingDb ? existingDbServerName : 'placeholder'
 }

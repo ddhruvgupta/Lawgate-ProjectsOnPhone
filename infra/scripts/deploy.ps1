@@ -75,6 +75,15 @@ param(
     # convention: "${appName}-${environment}-frontend" (e.g. lawgate-prod-frontend).
     [string] $StaticWebAppName = '',
 
+    # Explicit PostgreSQL Flexible Server name — avoids picking an arbitrary server when
+    # multiple exist in the resource group. Required when the resource group contains
+    # more than one Flexible Server.
+    [string] $PostgresServerName = '',
+
+    # Explicit Key Vault name — avoids ambiguity when the resource group contains more
+    # than one vault. If omitted, the script filters by the 'lg-kv-*' naming convention.
+    [string] $KeyVaultName = '',
+
     [switch] $SkipBicep,
     [switch] $SkipMigrations,
     [switch] $SkipBackend,
@@ -141,7 +150,7 @@ function Read-SecretFromKeyVault([string]$rg, [string]$secretName, [string]$keyV
         $candidates = if ($matchingNames.Count -gt 0) { $matchingNames } else { $keyVaultNames }
 
         if ($candidates.Count -gt 1) {
-            throw "Multiple Key Vaults found in resource group '$rg'. Pass the expected Key Vault name explicitly to Read-SecretFromKeyVault."
+            throw "Multiple Key Vaults found in resource group '$rg'. The deployment script cannot determine which vault to use automatically. Ensure the resource group contains only the intended Key Vault, or re-run with -KeyVaultName to specify the vault explicitly."
         }
 
         $kvName = $candidates[0]
@@ -227,7 +236,7 @@ if (-not $SkipBicep) {
     # On re-runs both values already exist in Key Vault so no prompt appears.
     if (-not $PostgresPassword) {
         Write-Host "  Looking up PostgreSQL password from Key Vault..."
-        $dbConnStr = Read-SecretFromKeyVault $ResourceGroup 'DatabaseConnectionString'
+        $dbConnStr = Read-SecretFromKeyVault $ResourceGroup 'DatabaseConnectionString' $KeyVaultName
         if ($dbConnStr) {
             # Parse Password=... from the Npgsql connection string
             $PostgresPassword = ([regex]'(?i)Password=([^;]+)').Match($dbConnStr).Groups[1].Value
@@ -241,7 +250,7 @@ if (-not $SkipBicep) {
     }
     if (-not $JwtSecret) {
         Write-Host "  Looking up JWT secret from Key Vault..."
-        $JwtSecret = Read-SecretFromKeyVault $ResourceGroup 'JwtSecretKey'
+        $JwtSecret = Read-SecretFromKeyVault $ResourceGroup 'JwtSecretKey' $KeyVaultName
         if (-not $JwtSecret) {
             $jwtSecure = Read-Host "  Enter JWT secret key (min 32 chars)" -AsSecureString
             $JwtSecret = Get-SecureStringPlainText $jwtSecure
@@ -327,12 +336,23 @@ if (-not $SkipMigrations) {
     # Detect whether the PostgreSQL server uses VNet injection (private access).
     # VNet-injected servers have no public DNS entry — the FQDN only resolves
     # inside the VNet. Migrations run automatically on App Service startup instead.
-    $pgServer = az postgres flexible-server list `
-        --resource-group $ResourceGroup `
-        --query '[0].name' -o tsv 2>$null
+    $pgServer = if ($PostgresServerName) {
+        $PostgresServerName
+    } else {
+        $name = az postgres flexible-server list `
+            --resource-group $ResourceGroup `
+            --query '[0].name' -o tsv 2>$null
 
-    if ([string]::IsNullOrWhiteSpace($pgServer)) {
-        throw "No Azure Database for PostgreSQL Flexible Server was found in resource group '$ResourceGroup'. Cannot continue with firewall configuration or migrations."
+        if ([string]::IsNullOrWhiteSpace($name)) {
+            throw "No Azure Database for PostgreSQL Flexible Server was found in resource group '$ResourceGroup'. Cannot continue with firewall configuration or migrations."
+        }
+
+        # Warn when multiple servers exist — the first was chosen non-deterministically.
+        $serverCount = @(az postgres flexible-server list --resource-group $ResourceGroup --query '[].name' -o tsv 2>$null).Count
+        if ($serverCount -gt 1) {
+            Write-Warning "Multiple PostgreSQL Flexible Servers found in '$ResourceGroup'. Using '$name'. Pass -PostgresServerName to select explicitly."
+        }
+        $name
     }
 
     $isVnetInjected = $false
@@ -377,10 +397,11 @@ if (-not $SkipMigrations) {
     }
 
     $savedEAP3 = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
+    $firewallRuleName = "LocalMigrations-$(Get-Date -Format 'yyyyMMddHHmm')"
     az postgres flexible-server firewall-rule create `
         --resource-group $ResourceGroup `
         --name $pgServer `
-        --rule-name "LocalMigrations-$(Get-Date -Format 'yyyyMMddHHmm')" `
+        --rule-name $firewallRuleName `
         --start-ip-address $myIp `
         --end-ip-address $myIp 2>&1 | Out-Null
     $ErrorActionPreference = $savedEAP3
@@ -426,11 +447,11 @@ if (-not $SkipMigrations) {
         Remove-Item Env:ConnectionStrings__DefaultConnection -ErrorAction SilentlyContinue
     }
 
-    # Remove the temporary firewall rule
+    # Remove the temporary firewall rule using the same name captured at creation.
     az postgres flexible-server firewall-rule delete `
         --resource-group $ResourceGroup `
         --name $pgServer `
-        --rule-name "LocalMigrations-$(Get-Date -Format 'yyyyMMddHHmm')" `
+        --rule-name $firewallRuleName `
         --yes 2>$null
     Write-Host "  Temporary firewall rule removed"
     } # end non-VNet-injected migrations block

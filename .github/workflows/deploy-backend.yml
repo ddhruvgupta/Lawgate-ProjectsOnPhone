@@ -113,15 +113,29 @@ jobs:
         # even if the migration step failed — ensures the DB is never left publicly accessible.
         if: ${{ always() && github.event_name == 'workflow_dispatch' && github.event.inputs.skip_migrations != 'true' }}
         run: |
+          set -euo pipefail
+
           az postgres flexible-server firewall-rule delete \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
             --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
             --rule-name "GitHubActions-${{ github.run_id }}" \
             --yes 2>/dev/null || true
+
           az postgres flexible-server update \
             --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
             --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
-            --public-access disabled 2>/dev/null || true
+            --public-access disabled
+
+          public_access_state="$(az postgres flexible-server show \
+            --name ${{ secrets.AZURE_POSTGRES_SERVER_NAME }} \
+            --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            --query 'network.publicNetworkAccess' \
+            --output tsv)"
+
+          if [ "${public_access_state}" != "Disabled" ]; then
+            echo "Expected PostgreSQL public access to be Disabled, but found '${public_access_state}'."
+            exit 1
+          fi
 
       # -----------------------------------------------------------------------
       # Deploy to Azure App Service

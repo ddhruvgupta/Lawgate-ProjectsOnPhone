@@ -152,6 +152,18 @@ if (!app.Environment.IsDevelopment())
     var logger = scope.ServiceProvider.GetRequiredService<ILogger<ApplicationDbContext>>();
     try
     {
+        // Acquire a PostgreSQL session-level advisory lock before running migrations.
+        // This serialises concurrent startup migrations during scale-out events —
+        // only one instance migrates at a time; others block until it completes.
+        // The lock is automatically released when this connection closes (scope disposal).
+        const long MigrationLockId = 0x4C617767617465L; // "Lawgate" in ASCII as int64
+        db.Database.OpenConnection();
+        using (var lockCmd = db.Database.GetDbConnection().CreateCommand())
+        {
+            lockCmd.CommandText = $"SELECT pg_advisory_lock({MigrationLockId})";
+            lockCmd.ExecuteNonQuery();
+        }
+        logger.LogInformation("Migration advisory lock acquired; applying pending migrations");
         db.Database.Migrate();
         logger.LogInformation("Database migrations applied successfully");
     }
