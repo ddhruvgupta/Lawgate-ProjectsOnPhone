@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, type Resolver } from 'react-hook-form';
@@ -39,16 +39,19 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>;
 
 export const ProjectsPage: React.FC = () => {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // BUG-010: initialise from URL so the modal is open on first render when ?new=1
+  const [modalOpen, setModalOpen] = useState(() => searchParams.get('new') === '1');
   const [search, setSearch] = useState('');
   const { showToast } = useToast();
   const queryClient = useQueryClient();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const clearedRef = useRef(false);
 
-  // BUG-010: auto-open modal when navigating here with ?new=1
+  // Strip ?new=1 from the URL without triggering a re-render loop.
+  // Only setSearchParams is called here (not setState), which is safe in an effect.
   useEffect(() => {
-    if (searchParams.get('new') === '1') {
-      setModalOpen(true);
+    if (!clearedRef.current && searchParams.get('new') === '1') {
+      clearedRef.current = true;
       setSearchParams({}, { replace: true });
     }
   }, [searchParams, setSearchParams]);
