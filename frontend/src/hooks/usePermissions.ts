@@ -17,7 +17,8 @@ export function usePermissions() {
   const { user } = useAuth();
   const role = user?.role as UserRole | undefined;
 
-  const hasRole = (...roles: UserRole[]) => !!role && roles.includes(role);
+  const hasRole = (...roles: UserRole[]) =>
+    !!role && roles.some((r) => r.toLowerCase() === role.toLowerCase());
 
   return {
     role,

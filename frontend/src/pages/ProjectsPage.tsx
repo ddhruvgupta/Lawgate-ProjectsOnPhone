@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -26,15 +26,35 @@ const schema = z.object({
   status: z.enum(['Intake', 'Active', 'Discovery', 'Negotiation', 'Hearing', 'OnHold', 'Settled', 'Closed', 'Archived']).default('Intake'),
   startDate: z.string().optional(),
   endDate: z.string().optional(),
-});
+}).refine(
+  (data) => {
+    if (data.startDate && data.endDate) {
+      return new Date(data.endDate) >= new Date(data.startDate);
+    }
+    return true;
+  },
+  { message: 'End date must be on or after start date', path: ['endDate'] }
+);
 
 type FormValues = z.infer<typeof schema>;
 
 export const ProjectsPage: React.FC = () => {
-  const [modalOpen, setModalOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  // BUG-010: initialise from URL so the modal is open on first render when ?new=1
+  const [modalOpen, setModalOpen] = useState(() => searchParams.get('new') === '1');
   const [search, setSearch] = useState('');
   const { showToast } = useToast();
   const queryClient = useQueryClient();
+  const clearedRef = useRef(false);
+
+  // Strip ?new=1 from the URL without triggering a re-render loop.
+  // Only setSearchParams is called here (not setState), which is safe in an effect.
+  useEffect(() => {
+    if (!clearedRef.current && searchParams.get('new') === '1') {
+      clearedRef.current = true;
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: projects = [], isLoading } = useQuery({
     queryKey: ['projects'],
@@ -83,7 +103,11 @@ export const ProjectsPage: React.FC = () => {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-          <p className="text-sm text-gray-500 mt-1">{projects.length} project{projects.length !== 1 ? 's' : ''} in your firm</p>
+          <p className="text-sm text-gray-500 mt-1">
+            {isLoading
+              ? 'Loading projects…'
+              : `${projects.length} project${projects.length !== 1 ? 's' : ''} in your firm`}
+          </p>
         </div>
         <button
           onClick={() => setModalOpen(true)}

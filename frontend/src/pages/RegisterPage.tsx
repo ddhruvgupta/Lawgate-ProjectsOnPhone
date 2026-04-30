@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
+import { APP_NAME } from '../constants/app';
 
 export const RegisterPage: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -12,40 +15,53 @@ export const RegisterPage: React.FC = () => {
     phone: '',
   });
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
+  /** Field-level password errors for inline display (BUG-016) */
+  const [passwordError, setPasswordError] = useState('');
+  const [confirmPasswordError, setConfirmPasswordError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear field-level errors as user types
+    if (name === 'password') setPasswordError('');
+    if (name === 'confirmPassword') setConfirmPasswordError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setPasswordError('');
+    setConfirmPasswordError('');
 
-    // Validation
-    if (formData.password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
-
+    // Field-level validation (BUG-016)
+    let hasFieldError = false;
     if (formData.password.length < 8) {
-      setError('Password must be at least 8 characters long');
-      return;
+      setPasswordError('Password must be at least 8 characters long');
+      hasFieldError = true;
     }
+    if (formData.password !== confirmPassword) {
+      setConfirmPasswordError('Passwords do not match');
+      hasFieldError = true;
+    }
+    if (hasFieldError) return;
 
     setIsLoading(true);
 
     try {
       await register({ ...formData, companyEmail: formData.email });
+      showToast('Account created! Welcome to ' + APP_NAME, 'success');
       navigate('/dashboard');
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Registration failed. Please try again.');
+      const msg = err instanceof Error ? err.message : 'Registration failed. Please try again.';
+      setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsLoading(false);
     }
@@ -56,7 +72,7 @@ export const RegisterPage: React.FC = () => {
       <div className="max-w-2xl w-full space-y-8 bg-white p-10 rounded-xl shadow-2xl">
         <div>
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Create Your Account
+            {APP_NAME} — Create Account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-600">
             Start your 14-day free trial
@@ -78,6 +94,7 @@ export const RegisterPage: React.FC = () => {
                 id="companyName"
                 name="companyName"
                 type="text"
+                autoComplete="organization"
                 required
                 value={formData.companyName}
                 onChange={handleChange}
@@ -96,6 +113,7 @@ export const RegisterPage: React.FC = () => {
                   id="firstName"
                   name="firstName"
                   type="text"
+                  autoComplete="given-name"
                   required
                   value={formData.firstName}
                   onChange={handleChange}
@@ -111,6 +129,7 @@ export const RegisterPage: React.FC = () => {
                   id="lastName"
                   name="lastName"
                   type="text"
+                  autoComplete="family-name"
                   required
                   value={formData.lastName}
                   onChange={handleChange}
@@ -129,6 +148,7 @@ export const RegisterPage: React.FC = () => {
                 id="email"
                 name="email"
                 type="email"
+                autoComplete="email"
                 required
                 value={formData.email}
                 onChange={handleChange}
@@ -139,13 +159,14 @@ export const RegisterPage: React.FC = () => {
 
             {/* Phone Number */}
             <div>
-              <label htmlFor="phoneNumber" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
                 Phone Number
               </label>
               <input
                 id="phone"
                 name="phone"
                 type="tel"
+                autoComplete="tel"
                 value={formData.phone}
                 onChange={handleChange}
                 className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
@@ -158,16 +179,32 @@ export const RegisterPage: React.FC = () => {
               <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
                 Password *
               </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="At least 8 characters"
-              />
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  className={`appearance-none relative block w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    passwordError ? 'border-red-500' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900`}
+                  placeholder="At least 8 characters"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="mt-1 text-xs text-red-500" role="alert">{passwordError}</p>
+              )}
             </div>
 
             {/* Confirm Password */}
@@ -175,16 +212,35 @@ export const RegisterPage: React.FC = () => {
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password *
               </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-                placeholder="Re-enter your password"
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => {
+                    setConfirmPassword(e.target.value);
+                    setConfirmPasswordError('');
+                  }}
+                  className={`appearance-none relative block w-full px-3 py-2 pr-10 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent ${
+                    confirmPasswordError ? 'border-red-500' : 'border-gray-300'
+                  } placeholder-gray-500 text-gray-900`}
+                  placeholder="Re-enter your password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword((v) => !v)}
+                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? <EyeSlashIcon className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                </button>
+              </div>
+              {confirmPasswordError && (
+                <p className="mt-1 text-xs text-red-500" role="alert">{confirmPasswordError}</p>
+              )}
             </div>
           </div>
 

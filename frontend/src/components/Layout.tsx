@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useDarkMode } from '../hooks/useDarkMode';
 import { cn } from '../utils/cn';
+import { APP_NAME } from '../constants/app';
 
 interface NavItem {
   label: string;
@@ -81,7 +82,7 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
       <aside className="w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700 flex flex-col">
         {/* Logo + dark mode toggle */}
         <div className="h-16 flex items-center justify-between px-6 border-b border-gray-200 dark:border-gray-700">
-          <h1 className="text-lg font-bold text-gray-900 dark:text-white">LegalDoc System</h1>
+          <h1 className="text-lg font-bold text-gray-900 dark:text-white">{APP_NAME}</h1>
           <button
             onClick={toggleDark}
             aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}

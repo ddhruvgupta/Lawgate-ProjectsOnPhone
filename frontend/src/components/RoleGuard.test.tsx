@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
 import type { User, AuthContextType } from '../types/auth'
 import { MemoryRouter } from 'react-router-dom'
 
@@ -107,6 +106,48 @@ describe('RoleGuard', () => {
       )
 
       expect(screen.getByText(/User/)).toBeInTheDocument()
+    })
+
+    // BUG-007: role comparison must be case-insensitive
+    it('denies access when role is lowercase and would mismatch a case-sensitive check', () => {
+      mockUseAuth.mockReturnValue(makeAuthContext(makeUser('User')))
+      renderWithRouter(
+        <RoleGuard allowedRoles={['CompanyOwner', 'Admin']}>
+          <div data-testid="protected-content">Secret</div>
+        </RoleGuard>
+      )
+      expect(screen.getByText(/Access Denied/i)).toBeInTheDocument()
+    })
+  })
+
+  // BUG-007: backend may return lowercase role strings (e.g. "admin" instead of "Admin")
+  describe('case-insensitive role matching', () => {
+    it('grants access when backend returns lowercase role that matches allowedRoles', () => {
+      // Simulate a user whose role comes back as lowercase from the API
+      const userWithLowercaseRole = { ...makeUser('Admin'), role: 'admin' as User['role'] }
+      mockUseAuth.mockReturnValue(makeAuthContext(userWithLowercaseRole))
+
+      renderWithRouter(
+        <RoleGuard allowedRoles={['CompanyOwner', 'Admin']}>
+          <div data-testid="protected-content">Protected</div>
+        </RoleGuard>
+      )
+
+      expect(screen.getByTestId('protected-content')).toBeInTheDocument()
+      expect(screen.queryByText(/Access Denied/i)).not.toBeInTheDocument()
+    })
+
+    it('grants access when allowedRoles contains lowercase but user role is PascalCase', () => {
+      mockUseAuth.mockReturnValue(makeAuthContext(makeUser('CompanyOwner')))
+
+      renderWithRouter(
+        // @ts-expect-error — testing runtime flexibility beyond the strict type
+        <RoleGuard allowedRoles={['companyOwner']}>
+          <div data-testid="protected-content">Protected</div>
+        </RoleGuard>
+      )
+
+      expect(screen.getByTestId('protected-content')).toBeInTheDocument()
     })
   })
 

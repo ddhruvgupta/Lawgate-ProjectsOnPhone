@@ -160,7 +160,7 @@ export const DashboardPage: React.FC = () => {
                 description="Start a new matter or case"
                 icon={<PlusIcon className="w-5 h-5 text-blue-600" />}
                 bg="bg-blue-50"
-                onClick={() => navigate('/projects')}
+                onClick={() => navigate('/projects?new=1')}
               />
               <QuickAction
                 label="Manage Team"

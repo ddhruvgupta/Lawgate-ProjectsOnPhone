@@ -1,8 +1,7 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse, User } from '../types/auth';
 import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument } from '../types';
-
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5059/api';
+import { config } from '../config';
 
 class ApiService {
   private api: AxiosInstance;
@@ -11,8 +10,9 @@ class ApiService {
 
   constructor() {
     this.api = axios.create({
-      baseURL: API_BASE_URL,
+      baseURL: config.apiUrl,
       headers: { 'Content-Type': 'application/json' },
+      timeout: 15000, // 15 s — surfaces network errors promptly instead of hanging indefinitely
     });
 
     this.api.interceptors.request.use(
@@ -108,7 +108,7 @@ class ApiService {
   async refreshTokens(refreshToken: string): Promise<ApiResponse<TokenResponse>> {
     // Use raw axios to avoid the interceptor triggering infinitely
     const response = await axios.post<ApiResponse<TokenResponse>>(
-      `${API_BASE_URL}/auth/refresh`,
+      `${config.apiUrl}/auth/refresh`,
       { refreshToken },
       { headers: { 'Content-Type': 'application/json' } }
     );
