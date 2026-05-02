@@ -59,6 +59,22 @@ export interface Document {
   downloadUrl?: string;
 }
 
+export interface UploadDocumentRequest {
+  projectId: number;
+  fileName: string;
+  fileSizeBytes: number;
+  documentType: number;
+  description?: string;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  documentId: number;
+  uploadUrl: string;
+  blobName: string;
+  expiresAt: string;
+}
+
 // ─── Users / Team ────────────────────────────────────────────────────────────
 
 export interface TeamMember {

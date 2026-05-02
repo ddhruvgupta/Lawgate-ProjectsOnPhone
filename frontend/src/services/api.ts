@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse, User } from '../types/auth';
-import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument } from '../types';
+import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, UploadDocumentRequest, UploadUrlResponse, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument } from '../types';
 import { config } from '../config';
 
 class ApiService {
@@ -184,6 +184,16 @@ class ApiService {
 
   async deleteDocument(id: number): Promise<void> {
     await this.api.delete(`/documents/${id}`);
+  }
+
+  async generateUploadUrl(dto: UploadDocumentRequest): Promise<UploadUrlResponse> {
+    const response = await this.api.post<UploadUrlResponse>('/documents/upload-url', dto);
+    return response.data;
+  }
+
+  async confirmUpload(documentId: number): Promise<Document> {
+    const response = await this.api.post<Document>(`/documents/${documentId}/confirm`);
+    return response.data;
   }
 
   // ─── Team / Users ──────────────────────────────────────────────────────────

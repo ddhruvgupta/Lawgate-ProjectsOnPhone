@@ -10,7 +10,7 @@ import { useToast } from '../contexts/ToastContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { ProjectStatusBadge } from '../components/ProjectStatusBadge';
 import { formatDate, formatBytes } from '../utils/formatters';
-import type { UpdateProjectRequest } from '../types';
+import type { UpdateProjectRequest, UploadDocumentRequest } from '../types';
 import {
   ArrowLeftIcon,
   PencilIcon,
@@ -18,6 +18,7 @@ import {
   DocumentIcon,
   XMarkIcon,
   ArrowDownTrayIcon,
+  ArrowUpTrayIcon,
   CalendarIcon,
   UserIcon,
   HashtagIcon,
@@ -35,14 +36,39 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>;
 
+const uploadSchema = z.object({
+  documentType: z.coerce.number().int(),
+  description: z.string().max(500).optional().default(''),
+});
+
+type UploadFormValues = z.infer<typeof uploadSchema>;
+
+const DOCUMENT_TYPES = [
+  { value: 1, label: 'Contract' },
+  { value: 2, label: 'Brief' },
+  { value: 3, label: 'Motion' },
+  { value: 4, label: 'Pleading' },
+  { value: 5, label: 'Agreement' },
+  { value: 6, label: 'Evidence' },
+  { value: 7, label: 'Correspondence' },
+  { value: 8, label: 'Research' },
+  { value: 99, label: 'Other' },
+];
+
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+
 export const ProjectDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
-  const { canEditProject, canDeleteProject } = usePermissions();
+  const { canEditProject, canDeleteProject, canUploadDocument } = usePermissions();
   const queryClient = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
   const projectId = Number(id);
 
   const { data: project, isLoading: projectLoading } = useQuery({
@@ -87,6 +113,78 @@ export const ProjectDetailPage: React.FC = () => {
     },
     onError: () => showToast('Failed to delete document', 'error'),
   });
+
+  const {
+    register: registerUpload,
+    handleSubmit: handleUploadSubmit,
+    reset: resetUpload,
+    formState: { errors: uploadErrors },
+  } = useForm<UploadFormValues>({ resolver: zodResolver(uploadSchema) as Resolver<UploadFormValues> });
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setFileError(null);
+    if (file && file.size > MAX_FILE_SIZE_BYTES) {
+      setFileError('File must be 50 MB or smaller.');
+      setSelectedFile(null);
+      return;
+    }
+    setSelectedFile(file);
+  };
+
+  const openUploadModal = () => {
+    setSelectedFile(null);
+    setFileError(null);
+    resetUpload();
+    setUploadOpen(true);
+  };
+
+  const handleUpload = async (values: UploadFormValues) => {
+    if (!selectedFile) {
+      setFileError('Please select a file.');
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      // Step 1: Get SAS upload URL from backend
+      const uploadRequest: UploadDocumentRequest = {
+        projectId,
+        fileName: selectedFile.name,
+        fileSizeBytes: selectedFile.size,
+        documentType: values.documentType,
+        description: values.description || undefined,
+        contentType: selectedFile.type || 'application/octet-stream',
+      };
+      const { documentId, uploadUrl } = await apiService.generateUploadUrl(uploadRequest);
+
+      // Step 2: PUT the file directly to Azure Blob Storage via SAS URL (no auth header)
+      const putResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'x-ms-blob-type': 'BlockBlob',
+          'Content-Type': selectedFile.type || 'application/octet-stream',
+        },
+        body: selectedFile,
+      });
+
+      if (!putResponse.ok) {
+        throw new Error(`Upload to storage failed: ${putResponse.status}`);
+      }
+
+      // Step 3: Confirm upload with backend
+      await apiService.confirmUpload(documentId);
+
+      queryClient.invalidateQueries({ queryKey: ['documents', projectId] });
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      showToast('Document uploaded successfully', 'success');
+      setUploadOpen(false);
+    } catch {
+      showToast('Upload failed. Please try again.', 'error');
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const {
     register,
@@ -232,14 +330,16 @@ export const ProjectDetailPage: React.FC = () => {
             <h2 className="font-semibold text-gray-900">Documents</h2>
             <p className="text-xs text-gray-500 mt-0.5">{documents.length} file{documents.length !== 1 ? 's' : ''}</p>
           </div>
-          {/* Upload button placeholder — full upload flow requires Azure SAS */}
-          <button
-            disabled
-            title="Document upload coming soon"
-            className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-gray-400 bg-gray-100 border border-gray-200 rounded-lg cursor-not-allowed"
-          >
-            Upload Document
-          </button>
+          {/* Upload button */}
+          {canUploadDocument && (
+            <button
+              onClick={openUploadModal}
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-blue-600 border border-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <ArrowUpTrayIcon className="w-4 h-4" />
+              Upload Document
+            </button>
+          )}
         </div>
 
         {docsLoading ? (
@@ -252,7 +352,7 @@ export const ProjectDetailPage: React.FC = () => {
           <div className="py-16 text-center">
             <DocumentIcon className="w-10 h-10 text-gray-300 mx-auto mb-3" />
             <p className="text-sm font-medium text-gray-500">No documents yet</p>
-            <p className="text-xs text-gray-400 mt-1">Upload functionality coming soon</p>
+            <p className="text-xs text-gray-400 mt-1">Upload a document to get started</p>
           </div>
         ) : (
           <ul className="divide-y divide-gray-100">
@@ -379,6 +479,119 @@ export const ProjectDetailPage: React.FC = () => {
                 {deleteMutation.isPending ? 'Deleting…' : 'Delete Project'}
               </button>
             </div>
+          </DialogPanel>
+        </div>
+      </Dialog>
+
+      {/* Upload Document Modal */}
+      <Dialog open={uploadOpen} onClose={() => !isUploading && setUploadOpen(false)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <DialogPanel className="bg-white rounded-xl shadow-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+              <DialogTitle className="text-base font-semibold text-gray-900">Upload Document</DialogTitle>
+              <button
+                onClick={() => setUploadOpen(false)}
+                disabled={isUploading}
+                className="text-gray-400 hover:text-gray-600 disabled:opacity-40"
+                aria-label="Close"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+            <form onSubmit={handleUploadSubmit(handleUpload)} noValidate>
+              <div className="p-6 space-y-4">
+                {/* File input */}
+                <div>
+                  <label htmlFor="upload-file" className="block text-sm font-medium text-gray-700 mb-1">
+                    File <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
+                  <input
+                    id="upload-file"
+                    type="file"
+                    onChange={handleFileChange}
+                    disabled={isUploading}
+                    className="block w-full text-sm text-gray-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-sm file:font-medium file:text-gray-700 file:bg-white hover:file:bg-gray-50 cursor-pointer"
+                    aria-describedby={fileError ? 'file-error' : undefined}
+                  />
+                  {fileError && (
+                    <p id="file-error" role="alert" className="mt-1 text-xs text-red-500">{fileError}</p>
+                  )}
+                  {selectedFile && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      {selectedFile.name} &mdash; {formatBytes(selectedFile.size)}
+                    </p>
+                  )}
+                  <p className="mt-1 text-xs text-gray-400">Maximum file size: 50 MB</p>
+                </div>
+
+                {/* Document type */}
+                <div>
+                  <label htmlFor="upload-doc-type" className="block text-sm font-medium text-gray-700 mb-1">
+                    Document Type <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
+                  <select
+                    id="upload-doc-type"
+                    {...registerUpload('documentType')}
+                    disabled={isUploading}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  >
+                    {DOCUMENT_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>{t.label}</option>
+                    ))}
+                  </select>
+                  {uploadErrors.documentType && (
+                    <p role="alert" className="mt-1 text-xs text-red-500">{uploadErrors.documentType.message}</p>
+                  )}
+                </div>
+
+                {/* Description */}
+                <div>
+                  <label htmlFor="upload-description" className="block text-sm font-medium text-gray-700 mb-1">
+                    Description
+                  </label>
+                  <textarea
+                    id="upload-description"
+                    {...registerUpload('description')}
+                    rows={2}
+                    disabled={isUploading}
+                    placeholder="Optional description…"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:opacity-50"
+                  />
+                  {uploadErrors.description && (
+                    <p role="alert" className="mt-1 text-xs text-red-500">{uploadErrors.description.message}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100">
+                <button
+                  type="button"
+                  onClick={() => setUploadOpen(false)}
+                  disabled={isUploading}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={isUploading}
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" aria-hidden="true" />
+                      Uploading…
+                    </>
+                  ) : (
+                    <>
+                      <ArrowUpTrayIcon className="w-4 h-4" aria-hidden="true" />
+                      Upload
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </DialogPanel>
         </div>
       </Dialog>
