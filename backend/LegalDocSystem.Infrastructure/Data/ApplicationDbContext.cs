@@ -53,6 +53,9 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.Email).IsRequired().HasMaxLength(200);
             entity.Property(e => e.PasswordHash).IsRequired();
             entity.HasIndex(e => new { e.CompanyId, e.Email }).IsUnique();
+            entity.HasIndex(e => e.RefreshToken)
+                .HasDatabaseName("ix_users_refreshtoken")
+                .HasFilter("\"RefreshToken\" IS NOT NULL");
             
             // Relationships
             entity.HasMany(e => e.ProjectPermissions)
@@ -104,6 +107,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.ContentHash).HasMaxLength(100);
             entity.HasIndex(e => new { e.ProjectId, e.IsLatestVersion });
             entity.HasIndex(e => e.ParentDocumentId);
+            entity.HasIndex(e => new { e.ProjectId, e.Status }).HasDatabaseName("ix_documents_project_status");
             
             // Self-referencing relationship for versions
             entity.HasOne(e => e.ParentDocument)
@@ -129,6 +133,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
             entity.HasIndex(e => new { e.EntityType, e.EntityId });
+            entity.HasIndex(e => new { e.CompanyId, e.EntityType }).HasDatabaseName("ix_auditlogs_company_entity");
         });
     }
 
