@@ -50,6 +50,9 @@ internal sealed class FakeBlobStorageService : IBlobStorageService
         return Task.FromResult(size);
     }
 
+    public Task EnsureContainerExistsAsync(string containerName)
+        => Task.CompletedTask;
+
     public Task SetBlobTagsAsync(string fileName, string containerName, IDictionary<string, string> tags)
         => Task.CompletedTask;
 }
