@@ -69,6 +69,28 @@ resource legalDocumentsContainer 'Microsoft.Storage/storageAccounts/blobServices
 }
 
 // ---------------------------------------------------------------------------
+// Microsoft Defender for Storage — on-upload malware scanning
+// ---------------------------------------------------------------------------
+
+resource defenderForStorage 'Microsoft.Security/defenderForStorageSettings@2022-12-01-preview' = {
+  name: 'current'
+  scope: storageAccount
+  properties: {
+    isEnabled: true
+    malwareScanning: {
+      onUpload: {
+        isEnabled: true
+        capGBPerMonth: -1 // -1 = no cap; set a positive integer to limit monthly scan GB and control cost
+      }
+    }
+    sensitiveDataDiscovery: {
+      isEnabled: true
+    }
+    overrideSubscriptionLevelSettings: true // Apply these settings regardless of subscription-level Defender policy
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Outputs
 // ---------------------------------------------------------------------------
 

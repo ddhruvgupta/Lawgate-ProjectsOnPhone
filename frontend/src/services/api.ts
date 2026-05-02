@@ -1,6 +1,6 @@
 import axios, { type AxiosInstance, type AxiosError } from 'axios';
 import type { ApiResponse, LoginRequest, RegisterRequest, TokenResponse, User } from '../types/auth';
-import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, UploadDocumentRequest, UploadUrlResponse, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument } from '../types';
+import type { Project, CreateProjectRequest, UpdateProjectRequest, Document, UploadDocumentRequest, UploadUrlResponse, TeamMember, CreateTeamMemberRequest, AuditLogsResponse, CompanyOverview, CompanyDetail, CompanyDocument, CompanyInfo } from '../types';
 import { config } from '../config';
 
 class ApiService {
@@ -29,7 +29,9 @@ class ApiService {
       async (error: AxiosError<ApiResponse<never>>) => {
         const originalRequest = error.config as typeof error.config & { _retry?: boolean };
 
-        if (error.response?.status === 401 && !originalRequest._retry) {
+        const isAuthEndpoint = originalRequest.url?.includes('/auth/login') || originalRequest.url?.includes('/auth/register');
+
+        if (error.response?.status === 401 && !originalRequest._retry && !isAuthEndpoint) {
           const storedRefreshToken = localStorage.getItem('refreshToken');
 
           if (!storedRefreshToken) {
@@ -224,6 +226,13 @@ class ApiService {
     const response = await this.api.get<AuditLogsResponse>('/audit', { params });
     return response.data;
   }
+  // ─── Company ───────────────────────────────────────────────────────────────
+
+  async getMyCompany(): Promise<CompanyInfo> {
+    const response = await this.api.get<CompanyInfo>('/companies/me');
+    return response.data;
+  }
+
   // ── Platform Admin ────────────────────────────────────────────────────────
 
   getPlatformCompanies(): Promise<CompanyOverview[]> {

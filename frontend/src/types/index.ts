@@ -174,6 +174,17 @@ export interface CompanyDocument {
   createdAt: string;
 }
 
+// ─── Company (own company, for storage bar / tier display) ──────────────────
+
+export interface CompanyInfo {
+  id: number;
+  name: string;
+  subscriptionTier: string;
+  subscriptionEndDate: string | null;
+  storageUsedBytes: number;
+  storageQuotaBytes: number;
+}
+
 // ─── Toast ───────────────────────────────────────────────────────────────────
 
 export type ToastType = 'success' | 'error' | 'info' | 'warning';

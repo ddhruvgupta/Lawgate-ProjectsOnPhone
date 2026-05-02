@@ -25,12 +25,15 @@ internal sealed class FakeBlobStorageService : IBlobStorageService
 
     public Task<string> UploadAsync(Stream content, string fileName, string containerName)
     {
-        _blobs[$"{containerName}/{fileName}"] = content.Length;
+        _blobs[fileName] = content.Length;
         return Task.FromResult($"https://fake.blob/{containerName}/{fileName}");
     }
 
     public Task<Stream> DownloadAsync(string fileName, string containerName)
-        => Task.FromResult<Stream>(new MemoryStream(new byte[_blobs.GetValueOrDefault($"{containerName}/{fileName}")]));
+    {
+        var size = _blobs.GetValueOrDefault(fileName, 0L);
+        return Task.FromResult<Stream>(new MemoryStream(new byte[checked((int)size)]));
+    }
 
     public Task DeleteAsync(string fileName, string containerName)
     {

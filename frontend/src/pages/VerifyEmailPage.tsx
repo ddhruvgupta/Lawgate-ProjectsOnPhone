@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { apiService } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 type Status = 'verifying' | 'success' | 'error';
 
@@ -8,6 +9,7 @@ export const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const [status, setStatus] = useState<Status>('verifying');
+  const { markEmailVerified } = useAuth();
 
   useEffect(() => {
     if (!token) {
@@ -18,8 +20,16 @@ export const VerifyEmailPage: React.FC = () => {
 
     apiService
       .verifyEmail(token)
-      .then((res) => setStatus(res.success ? 'success' : 'error'))
+      .then((res) => {
+        if (res.success) {
+          markEmailVerified();
+          setStatus('success');
+        } else {
+          setStatus('error');
+        }
+      })
       .catch(() => setStatus('error'));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   return (

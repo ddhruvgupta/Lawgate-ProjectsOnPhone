@@ -84,6 +84,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
+  const markEmailVerified = () => {
+    if (!user) return;
+    const updatedUser = { ...user, isEmailVerified: true };
+    setUser(updatedUser);
+    localStorage.setItem('user', JSON.stringify(updatedUser));
+  };
+
   const value: AuthContextType = {
     user,
     token,
@@ -92,6 +99,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout,
     forgotPassword,
     resetPassword,
+    markEmailVerified,
     isAuthenticated: !!token && !!user,
     isLoading,
   };

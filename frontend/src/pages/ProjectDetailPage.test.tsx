@@ -119,6 +119,10 @@ describe('ProjectDetailPage', () => {
     mockApiService.getProjectDocuments.mockResolvedValue([])
   })
 
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
   // ── Helper to wait for project heading ───────────────────────────────────
   // Both the breadcrumb <span> and the <h1> contain "Test Project", so we use
   // the heading role to uniquely identify the h1.
@@ -217,19 +221,19 @@ describe('ProjectDetailPage', () => {
 
   // ── File size validation ──────────────────────────────────────────────────
 
-  it('shows error when selected file exceeds 50 MB', async () => {
+  it('shows error when selected file exceeds 500 MB', async () => {
     renderPage()
     await waitForHeading()
     await userEvent.click(screen.getByRole('button', { name: 'Upload Document' }))
 
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-    const bigFile = new File([new ArrayBuffer(51 * 1024 * 1024)], 'huge.pdf', { type: 'application/pdf' })
-    Object.defineProperty(bigFile, 'size', { value: 51 * 1024 * 1024 })
+    const bigFile = new File(['x'], 'huge.pdf', { type: 'application/pdf' })
+    Object.defineProperty(bigFile, 'size', { value: 501 * 1024 * 1024 })
 
     await userEvent.upload(fileInput, bigFile)
 
     // The error p has role="alert" with specific message text
-    await screen.findByText('File must be 50 MB or smaller.')
+    await screen.findByText('File must be 500 MB or smaller.')
   })
 
   // ── Successful upload flow ────────────────────────────────────────────────
@@ -284,8 +288,6 @@ describe('ProjectDetailPage', () => {
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Document uploaded successfully', 'success')
     })
-
-    vi.unstubAllGlobals()
   })
 
   it('shows error toast when upload fails', async () => {
@@ -337,8 +339,6 @@ describe('ProjectDetailPage', () => {
     await waitFor(() => {
       expect(mockShowToast).toHaveBeenCalledWith('Upload failed. Please try again.', 'error')
     })
-
-    vi.unstubAllGlobals()
   })
 
   // ── Download ──────────────────────────────────────────────────────────────

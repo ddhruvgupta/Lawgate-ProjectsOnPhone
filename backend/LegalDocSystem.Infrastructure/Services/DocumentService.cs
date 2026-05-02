@@ -5,6 +5,7 @@ using LegalDocSystem.Domain.Enums;
 using LegalDocSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace LegalDocSystem.Infrastructure.Services
 {
@@ -13,19 +14,36 @@ namespace LegalDocSystem.Infrastructure.Services
         private readonly ApplicationDbContext _context;
         private readonly IBlobStorageService _blobStorageService;
         private readonly ILogger<DocumentService> _logger;
+        private readonly UploadOptions _uploadOptions;
 
         public DocumentService(
             ApplicationDbContext context,
             IBlobStorageService blobStorageService,
-            ILogger<DocumentService> logger)
+            ILogger<DocumentService> logger,
+            IOptions<UploadOptions> uploadOptions)
         {
             _context = context;
             _blobStorageService = blobStorageService;
             _logger = logger;
+            _uploadOptions = uploadOptions.Value;
+        }
+
+        /// <summary>
+        /// Calculates a SAS expiry window based on declared file size.
+        /// Formula: Clamp(Min + Ceil(fileSizeMb * minutesPerMb), Min, Max)
+        /// </summary>
+        private int ComputeSasExpiryMinutes(long fileSizeBytes)
+        {
+            double fileSizeMb = fileSizeBytes / (1024.0 * 1024.0);
+            int computed = _uploadOptions.MinExpiryMinutes + (int)Math.Ceiling(fileSizeMb * _uploadOptions.ExpiryMinutesPerMb);
+            return Math.Clamp(computed, _uploadOptions.MinExpiryMinutes, _uploadOptions.MaxExpiryMinutes);
         }
 
         public async Task<UploadUrlResponse> GenerateUploadUrlAsync(int userId, UploadDocumentDto dto)
         {
+            _logger.LogInformation("GenerateUploadUrl: userId={UserId} projectId={ProjectId} file={FileName} size={Size}",
+                userId, dto.ProjectId, dto.FileName, dto.FileSizeBytes);
+
             var user = await _context.Users.FindAsync(userId);
             if (user == null) throw new KeyNotFoundException("User not found");
 
@@ -47,8 +65,14 @@ namespace LegalDocSystem.Infrastructure.Services
             string containerName = $"company-{user.CompanyId}";
             string blobName = $"{dto.ProjectId}/{Guid.NewGuid()}_{dto.FileName}";
 
-            // Generate Write SAS URL
-            string uploadUrl = _blobStorageService.GetSasUri(blobName, containerName, StorageAccessPermissions.Create | StorageAccessPermissions.Write, 15);
+            // Ensure the container exists before handing the SAS URL to the client
+            await _blobStorageService.EnsureContainerExistsAsync(containerName);
+
+            // Generate Write SAS URL — expiry scales with declared file size
+            int sasExpiryMinutes = ComputeSasExpiryMinutes(dto.FileSizeBytes);
+            string uploadUrl = _blobStorageService.GetSasUri(blobName, containerName, StorageAccessPermissions.Create | StorageAccessPermissions.Write, sasExpiryMinutes);
+            _logger.LogInformation("GenerateUploadUrl: container={Container} blob={Blob} sasExpiry={Expiry}min uploadUrl={UploadUrl}",
+                containerName, blobName, sasExpiryMinutes, uploadUrl);
 
             // Create Pending Document Entity
             var document = new Document
@@ -78,12 +102,14 @@ namespace LegalDocSystem.Infrastructure.Services
                 DocumentId = document.Id,
                 UploadUrl = uploadUrl,
                 BlobName = blobName,
-                ExpiresAt = DateTime.UtcNow.AddMinutes(15)
+                ExpiresAt = DateTime.UtcNow.AddMinutes(sasExpiryMinutes)
             };
         }
 
         public async Task<DocumentDto> ConfirmUploadAsync(int documentId, int userId)
         {
+            _logger.LogInformation("ConfirmUpload: documentId={DocumentId} userId={UserId}", documentId, userId);
+
             var document = await _context.Documents
                 .Include(d => d.UploadedBy)
                 .FirstOrDefaultAsync(d => d.Id == documentId);
@@ -92,8 +118,12 @@ namespace LegalDocSystem.Infrastructure.Services
             if (document.UploadedByUserId != userId) throw new UnauthorizedAccessException();
 
             // Verification Layer 3: Check actual blob size in Azure
+            _logger.LogInformation("ConfirmUpload: checking blob container={Container} path={Path}",
+                document.BlobContainerName, document.BlobStoragePath);
             long actualSize = await _blobStorageService.GetBlobSizeAsync(document.BlobStoragePath, document.BlobContainerName);
-            
+            _logger.LogInformation("ConfirmUpload: blob actualSize={ActualSize} declaredSize={DeclaredSize}",
+                actualSize, document.FileSizeBytes);
+
             if (actualSize == 0) throw new InvalidOperationException("File not found in storage. Upload may have failed.");
             
             // Check if user cheated on size

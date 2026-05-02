@@ -50,6 +50,7 @@ export interface AuthContextType {
   logout: () => void;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, newPassword: string, confirmPassword: string) => Promise<void>;
+  markEmailVerified: () => void;
   isAuthenticated: boolean;
   isLoading: boolean;
 }

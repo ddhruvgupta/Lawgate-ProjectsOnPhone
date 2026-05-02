@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using LegalDocSystem.Application.DTOs.Auth;
 using LegalDocSystem.Application.Interfaces;
 using LegalDocSystem.Domain.Entities;
@@ -7,6 +6,7 @@ using LegalDocSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 namespace LegalDocSystem.Infrastructure.Services;
 
@@ -18,13 +18,15 @@ public class AuthService : IAuthService
     private readonly ILogger<AuthService> _logger;
     private readonly int _jwtExpiryMinutes;
     private readonly string _frontendBaseUrl;
+    private readonly TierStorageLimits _tierStorageLimits;
 
     public AuthService(
         ApplicationDbContext context,
         IJwtTokenService jwtTokenService,
         IEmailService emailService,
         IConfiguration configuration,
-        ILogger<AuthService> logger)
+        ILogger<AuthService> logger,
+        IOptions<TierStorageLimits> tierStorageLimits)
     {
         _context = context;
         _jwtTokenService = jwtTokenService;
@@ -32,24 +34,15 @@ public class AuthService : IAuthService
         _logger = logger;
         _jwtExpiryMinutes = int.Parse(configuration["Jwt:ExpiryMinutes"] ?? "1440");
         _frontendBaseUrl = configuration["App:FrontendBaseUrl"] ?? "http://localhost:5173";
+        _tierStorageLimits = tierStorageLimits.Value;
     }
 
-    private static string HashToken(string token)
-    {
-        var bytes = SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(token));
-        return Convert.ToBase64String(bytes);
-    }
+    private static string HashToken(string token) => TokenHelper.HashToken(token);
 
     // Keep backward-compat alias used by refresh token logic
-    private static string HashRefreshToken(string token) => HashToken(token);
+    private static string HashRefreshToken(string token) => TokenHelper.HashToken(token);
 
-    private static string GenerateSecureToken()
-    {
-        var bytes = new byte[32];
-        RandomNumberGenerator.Fill(bytes);
-        return Convert.ToBase64String(bytes)
-            .Replace('+', '-').Replace('/', '_').Replace("=", ""); // URL-safe
-    }
+    private static string GenerateSecureToken() => TokenHelper.GenerateSecureToken();
 
     public async Task<TokenResponseDto> RegisterAsync(RegisterDto registerDto)
     {
@@ -89,7 +82,7 @@ public class AuthService : IAuthService
                 SubscriptionEndDate = DateTime.UtcNow.AddDays(14), // 14-day trial
                 IsActive = true,
                 StorageUsedBytes = 0,
-                StorageQuotaBytes = 10L * 1024 * 1024 * 1024, // 10 GB for trial
+                StorageQuotaBytes = _tierStorageLimits.ForTier(SubscriptionTier.Trial),
                 CreatedAt = DateTime.UtcNow,
                 CreatedBy = "System"
             };

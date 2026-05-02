@@ -7,6 +7,7 @@ using LegalDocSystem.Infrastructure.Data;
 using LegalDocSystem.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
 
@@ -31,7 +32,8 @@ public class DocumentServiceTests : IDisposable
         _context = new ApplicationDbContext(options);
 
         _blob = Substitute.For<IBlobStorageService>();
-        _sut = new DocumentService(_context, _blob, NullLogger<DocumentService>.Instance);
+        _sut = new DocumentService(_context, _blob, NullLogger<DocumentService>.Instance,
+            Options.Create(new UploadOptions()));
 
         // Seed: company + owner + project
         var company = new Company
@@ -214,7 +216,7 @@ public class DocumentServiceTests : IDisposable
     [Fact]
     public async Task GenerateUploadUrlAsync_WhenQuotaExceeded_ThrowsInvalidOperation()
     {
-        // Set company quota to exactly 1 byte less than requested size
+        // Leave 100 bytes of quota remaining, then request an upload of 200 bytes to trigger the quota check
         var company = await _context.Companies.FindAsync(_companyId);
         company!.StorageUsedBytes = company.StorageQuotaBytes - 100;
         await _context.SaveChangesAsync();

@@ -24,6 +24,7 @@ services:
     image: mcr.microsoft.com/azure-storage/azurite
     container_name: lawgate-azurite
     hostname: azurite
+    command: azurite --blobHost 0.0.0.0 --queueHost 0.0.0.0 --tableHost 0.0.0.0 --skipApiVersionCheck
     ports:
       - "10000:10000"
       - "10001:10001"
@@ -33,6 +34,11 @@ services:
     networks:
       - lawgate-network
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('net').createConnection({port:10000,host:'localhost'}).on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
 
   backend:
     build:
@@ -42,12 +48,16 @@ services:
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - ConnectionStrings__DefaultConnection=Host=postgres;Database=lawgate_db;Username=lawgate_user;Password=lawgate_dev_password_change_in_production
-      - ConnectionStrings__AzureStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      - ConnectionStrings__BlobStorage=DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://azurite:10000/devstoreaccount1;
+      - Storage__PublicBlobEndpoint=http://localhost:10000
       - ASPNETCORE_URLS=http://+:8080
+      - App__FrontendBaseUrl=http://localhost:5174
     ports:
       - "5059:8080"
     depends_on:
       postgres:
+        condition: service_healthy
+      azurite:
         condition: service_healthy
     networks:
       - lawgate-network
