@@ -10,37 +10,37 @@ namespace LegalDocSystem.Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.CreateIndex(
-                name: "ix_users_refreshtoken",
-                table: "Users",
-                column: "RefreshToken",
-                filter: "\"RefreshToken\" IS NOT NULL");
+            migrationBuilder.Sql(
+                @"CREATE INDEX CONCURRENTLY ""ix_users_refreshtoken""
+                  ON ""Users"" (""RefreshToken"")
+                  WHERE ""RefreshToken"" IS NOT NULL;",
+                suppressTransaction: true);
 
-            migrationBuilder.CreateIndex(
-                name: "ix_documents_project_status",
-                table: "Documents",
-                columns: new[] { "ProjectId", "Status" });
+            migrationBuilder.Sql(
+                @"CREATE INDEX CONCURRENTLY ""ix_documents_project_status""
+                  ON ""Documents"" (""ProjectId"", ""Status"");",
+                suppressTransaction: true);
 
-            migrationBuilder.CreateIndex(
-                name: "ix_auditlogs_company_entity",
-                table: "AuditLogs",
-                columns: new[] { "CompanyId", "EntityType" });
+            migrationBuilder.Sql(
+                @"CREATE INDEX CONCURRENTLY ""ix_auditlogs_company_entity""
+                  ON ""AuditLogs"" (""CompanyId"", ""EntityType"");",
+                suppressTransaction: true);
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropIndex(
-                name: "ix_users_refreshtoken",
-                table: "Users");
+            migrationBuilder.Sql(
+                @"DROP INDEX CONCURRENTLY IF EXISTS ""ix_users_refreshtoken"";",
+                suppressTransaction: true);
 
-            migrationBuilder.DropIndex(
-                name: "ix_documents_project_status",
-                table: "Documents");
+            migrationBuilder.Sql(
+                @"DROP INDEX CONCURRENTLY IF EXISTS ""ix_documents_project_status"";",
+                suppressTransaction: true);
 
-            migrationBuilder.DropIndex(
-                name: "ix_auditlogs_company_entity",
-                table: "AuditLogs");
+            migrationBuilder.Sql(
+                @"DROP INDEX CONCURRENTLY IF EXISTS ""ix_auditlogs_company_entity"";",
+                suppressTransaction: true);
         }
     }
 }
