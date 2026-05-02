@@ -133,7 +133,7 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(e => new { e.CompanyId, e.CreatedAt });
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
             entity.HasIndex(e => new { e.EntityType, e.EntityId });
-            entity.HasIndex(e => new { e.CompanyId, e.EntityType }).HasDatabaseName("ix_auditlogs_company_entity");
+            entity.HasIndex(e => new { e.CompanyId, e.EntityType, e.CreatedAt }).HasDatabaseName("ix_auditlogs_company_entity");
         });
     }
 

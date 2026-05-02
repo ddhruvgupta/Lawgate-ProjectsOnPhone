@@ -84,7 +84,7 @@ namespace LegalDocSystem.Infrastructure.Migrations
 
                     b.HasIndex("CompanyId", "CreatedAt");
 
-                    b.HasIndex("CompanyId", "EntityType")
+                    b.HasIndex("CompanyId", "EntityType", "CreatedAt")
                         .HasDatabaseName("ix_auditlogs_company_entity");
 
                     b.HasIndex("EntityType", "EntityId");
