@@ -35,7 +35,7 @@ namespace LegalDocSystem.Infrastructure.Services
         private int ComputeSasExpiryMinutes(long fileSizeBytes)
         {
             double fileSizeMb = fileSizeBytes / (1024.0 * 1024.0);
-            int computed = _uploadOptions.MinExpiryMinutes + (int)Math.Ceiling(fileSizeMb * _uploadOptions.ExpiryMinutesPerMb);
+            int computed = _uploadOptions.MinExpiryMinutes + (int)(fileSizeMb * _uploadOptions.ExpiryMinutesPerMb);
             return Math.Clamp(computed, _uploadOptions.MinExpiryMinutes, _uploadOptions.MaxExpiryMinutes);
         }
 
