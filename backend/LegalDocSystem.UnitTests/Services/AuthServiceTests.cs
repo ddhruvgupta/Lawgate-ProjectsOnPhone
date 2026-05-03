@@ -9,6 +9,7 @@ using LegalDocSystem.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.Extensions.Options;
 using NSubstitute;
 using Xunit;
 
@@ -45,7 +46,7 @@ public class AuthServiceTests : IDisposable
             .AddInMemoryCollection(inMemorySettings)
             .Build();
 
-        _sut = new AuthService(_context, _jwtTokenService, _emailService, _configuration, NullLogger<AuthService>.Instance);
+        _sut = new AuthService(_context, _jwtTokenService, _emailService, _configuration, NullLogger<AuthService>.Instance, Options.Create(new TierStorageLimits()));
     }
 
     // Replicates AuthService.HashToken(token) for setting up test data
@@ -253,6 +254,68 @@ public class AuthServiceTests : IDisposable
         await act.Should().NotThrowAsync();
         var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == "newowner@test.com");
         user.Should().NotBeNull();
+    }
+
+    // ─── Register — storage quota assignment ──────────────────────────────
+
+    [Fact]
+    public async Task RegisterAsync_NewCompany_GetsTrialQuotaFromTierStorageLimits()
+    {
+        // Arrange — default TierStorageLimits has TrialGb = 1
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        var company = await _context.Companies.FirstOrDefaultAsync(c => c.Email == "newco@test.com");
+        company.Should().NotBeNull();
+        company!.StorageQuotaBytes.Should().Be(1L * 1024 * 1024 * 1024);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_WithCustomTrialQuota_UsesConfiguredValue()
+    {
+        // Arrange — override TrialGb to 5 GB
+        var customLimits = new TierStorageLimits { TrialGb = 5 };
+        var sut = new AuthService(
+            _context, _jwtTokenService, _emailService, _configuration,
+            NullLogger<AuthService>.Instance,
+            Options.Create(customLimits));
+
+        await sut.RegisterAsync(ValidRegisterDto());
+
+        // Assert
+        var company = await _context.Companies.FirstOrDefaultAsync(c => c.Email == "newco@test.com");
+        company!.StorageQuotaBytes.Should().Be(5L * 1024 * 1024 * 1024);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_NewCompany_StorageUsedBytesIsZero()
+    {
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        var company = await _context.Companies.FirstOrDefaultAsync(c => c.Email == "newco@test.com");
+        company!.StorageUsedBytes.Should().Be(0);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_NewCompany_SubscriptionTierIsTrial()
+    {
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        var company = await _context.Companies.FirstOrDefaultAsync(c => c.Email == "newco@test.com");
+        company!.SubscriptionTier.Should().Be(SubscriptionTier.Trial);
+    }
+
+    [Fact]
+    public async Task RegisterAsync_NewCompany_SubscriptionEndsIn14Days()
+    {
+        var before = DateTime.UtcNow.AddDays(13).Date;
+        var after  = DateTime.UtcNow.AddDays(15).Date;
+
+        await _sut.RegisterAsync(ValidRegisterDto());
+
+        var company = await _context.Companies.FirstOrDefaultAsync(c => c.Email == "newco@test.com");
+        company!.SubscriptionEndDate.Should().NotBeNull();
+        company.SubscriptionEndDate!.Value.Date.Should().BeOnOrAfter(before).And.BeOnOrBefore(after);
     }
 
     // ─── Login ─────────────────────────────────────────────────────────────

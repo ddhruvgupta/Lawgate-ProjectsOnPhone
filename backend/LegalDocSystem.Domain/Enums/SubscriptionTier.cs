@@ -3,7 +3,7 @@ namespace LegalDocSystem.Domain.Enums;
 public enum SubscriptionTier
 {
     /// <summary>
-    /// Free trial (14 days, limited features)
+    /// Free trial (14 days, 1 GB storage)
     /// </summary>
     Trial = 1,
     

@@ -87,6 +87,33 @@ public class ConsoleEmailService : IEmailService
         return Task.CompletedTask;
     }
 
+    public Task SendTeamInviteEmailAsync(string toEmail, string firstName, string invitedByName, string companyName, string loginUrl, string temporaryPassword)
+    {
+        var body = $"""
+            ============================================================
+            TEAM INVITATION — DEV ONLY
+            To: {toEmail}
+            Subject: You've been added to {companyName} on Lawgate
+            ============================================================
+            Hi {firstName},
+
+            {invitedByName} has added you to {companyName} on Lawgate.
+
+            Your login details:
+              Email:             {toEmail}
+              Temporary password: {temporaryPassword}
+
+            Log in here: {loginUrl}
+
+            Please change your password after your first sign-in.
+            ============================================================
+            """;
+
+        _logger.LogInformation("[DEV EMAIL] Team invite for {Email}:\n{Body}", toEmail, body);
+        WriteEmailToFile($"invite-{SanitiseEmail(toEmail)}-{Timestamp()}.txt", body);
+        return Task.CompletedTask;
+    }
+
     // ── Helpers ──────────────────────────────────────────────────────────────
 
     private static void WriteEmailToFile(string fileName, string content)

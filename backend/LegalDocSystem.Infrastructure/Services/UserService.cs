@@ -4,16 +4,24 @@ using LegalDocSystem.Application.Interfaces;
 using LegalDocSystem.Domain.Entities;
 using LegalDocSystem.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 
 namespace LegalDocSystem.Infrastructure.Services;
 
 public class UserService : IUserService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IEmailService _emailService;
+    private readonly ILogger<UserService> _logger;
+    private readonly string _frontendBaseUrl;
 
-    public UserService(ApplicationDbContext context)
+    public UserService(ApplicationDbContext context, IEmailService emailService, IConfiguration configuration, ILogger<UserService> logger)
     {
         _context = context;
+        _emailService = emailService;
+        _logger = logger;
+        _frontendBaseUrl = configuration["App:FrontendBaseUrl"] ?? "http://localhost:5173";
     }
 
     public async Task<IEnumerable<UserDto>> GetUsersAsync(int companyId)
@@ -55,6 +63,10 @@ public class UserService : IUserService
             throw new InvalidOperationException("Email is already in use");
         }
 
+        // Generate verification token before constructing the user so we can pass
+        // the raw token into the email link and only store the hash.
+        var rawVerificationToken = TokenHelper.GenerateSecureToken();
+
         var user = new User
         {
             CompanyId = companyId,
@@ -66,7 +78,9 @@ public class UserService : IUserService
             Role = dto.Role,
             IsActive = true,
             CreatedAt = DateTime.UtcNow,
-            CreatedBy = createdBy
+            CreatedBy = createdBy,
+            EmailVerificationToken = TokenHelper.HashToken(rawVerificationToken),
+            EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24),
         };
 
         _context.Users.Add(user);
@@ -74,6 +88,30 @@ public class UserService : IUserService
 
         // Load company relationship for DTO mapping
         await _context.Entry(user).Reference(u => u.Company).LoadAsync();
+
+        // Send invitation email + verification email (non-blocking — failures must not abort creation)
+        try
+        {
+            var loginUrl = $"{_frontendBaseUrl}/login";
+            var verificationLink = $"{_frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(rawVerificationToken)}";
+
+            await _emailService.SendTeamInviteEmailAsync(
+                toEmail: user.Email,
+                firstName: user.FirstName,
+                invitedByName: createdBy,
+                companyName: user.Company.Name,
+                loginUrl: loginUrl,
+                temporaryPassword: dto.Password);
+
+            await _emailService.SendEmailVerificationAsync(
+                toEmail: user.Email,
+                firstName: user.FirstName,
+                verificationLink: verificationLink);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to send team invitation or verification email to {Email}", user.Email);
+        }
 
         return MapToDto(user);
     }

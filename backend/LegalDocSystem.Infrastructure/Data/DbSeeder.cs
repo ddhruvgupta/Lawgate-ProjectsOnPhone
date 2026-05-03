@@ -34,7 +34,7 @@ public static class DbSeeder
             SubscriptionEndDate = DateTime.UtcNow.AddDays(14),
             IsActive = true,
             StorageUsedBytes = 0,
-            StorageQuotaBytes = 10L * 1024 * 1024 * 1024, // 10 GB
+            StorageQuotaBytes = 1L * 1024 * 1024 * 1024, // 1 GB (Trial)
             CreatedAt = DateTime.UtcNow,
             CreatedBy = "Seeder"
         };

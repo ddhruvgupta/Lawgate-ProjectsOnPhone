@@ -22,5 +22,9 @@
     background-color: #f9fafb;
     color: #111827;
   }
+  .dark body {
+    background-color: #030712;
+    color: #f9fafb;
+  }
 }
 

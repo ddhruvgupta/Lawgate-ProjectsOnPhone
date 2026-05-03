@@ -9,11 +9,16 @@ namespace LegalDocSystem.Infrastructure.Services
     public class AzureBlobStorageService : IBlobStorageService
     {
         private readonly string _connectionString;
+        // Optional: rewrite internal blob hostname with a public-facing one so browsers can
+        // reach Azurite (or a private endpoint) directly. Set Storage:PublicBlobEndpoint in
+        // docker-compose / appsettings for dev; leave empty in production.
+        private readonly string? _publicBlobEndpoint;
 
         public AzureBlobStorageService(IConfiguration configuration)
         {
             _connectionString = configuration.GetConnectionString("BlobStorage")
                 ?? throw new ArgumentNullException("BlobStorage connection string is missing");
+            _publicBlobEndpoint = configuration["Storage:PublicBlobEndpoint"];
         }
 
         public async Task<string> UploadAsync(Stream content, string fileName, string containerName)
@@ -51,6 +56,12 @@ namespace LegalDocSystem.Infrastructure.Services
             await blobClient.DeleteIfExistsAsync();
         }
 
+        public async Task EnsureContainerExistsAsync(string containerName)
+        {
+            var containerClient = new BlobContainerClient(_connectionString, containerName);
+            await containerClient.CreateIfNotExistsAsync();
+        }
+
         public string GetSasUri(string fileName, string containerName, StorageAccessPermissions permissions, int expirationMinutes = 60)
         {
             var containerClient = new BlobContainerClient(_connectionString, containerName);
@@ -71,7 +82,17 @@ namespace LegalDocSystem.Infrastructure.Services
 
             sasBuilder.SetPermissions(MapPermissions(permissions));
 
-            return blobClient.GenerateSasUri(sasBuilder).ToString();
+            var sasUri = blobClient.GenerateSasUri(sasBuilder).ToString();
+
+            // Rewrite the internal endpoint (e.g. http://azurite:10000) with the public-facing
+            // one so the browser can reach it. No-op when Storage:PublicBlobEndpoint is not set.
+            if (!string.IsNullOrEmpty(_publicBlobEndpoint))
+            {
+                var internalOrigin = blobClient.Uri.GetLeftPart(UriPartial.Authority);
+                sasUri = sasUri.Replace(internalOrigin, _publicBlobEndpoint.TrimEnd('/'), StringComparison.OrdinalIgnoreCase);
+            }
+
+            return sasUri;
         }
 
         private static BlobSasPermissions MapPermissions(StorageAccessPermissions permissions)

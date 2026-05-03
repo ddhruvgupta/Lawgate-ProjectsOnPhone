@@ -102,8 +102,8 @@ export const ProjectsPage: React.FC = () => {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Projects</h1>
-          <p className="text-sm text-gray-500 mt-1">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Projects</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
             {isLoading
               ? 'Loading projects…'
               : `${projects.length} project${projects.length !== 1 ? 's' : ''} in your firm`}
@@ -126,7 +126,7 @@ export const ProjectsPage: React.FC = () => {
           placeholder="Search by name, client, or case number…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          className="w-full pl-9 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         />
       </div>
 
@@ -134,16 +134,16 @@ export const ProjectsPage: React.FC = () => {
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="h-48 bg-gray-100 rounded-xl animate-pulse" />
+            <div key={i} className="h-48 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-xl border border-gray-200 border-dashed">
-          <FolderIcon className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-sm font-semibold text-gray-900 mb-1">
+        <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 border-dashed">
+          <FolderIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
             {search ? 'No projects match your search' : 'No projects yet'}
           </h3>
-          <p className="text-sm text-gray-500 mb-4">
+          <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
             {search ? 'Try a different search term.' : 'Create your first project to get started.'}
           </p>
           {!search && (
@@ -162,14 +162,14 @@ export const ProjectsPage: React.FC = () => {
             <Link
               key={project.id}
               to={`/projects/${project.id}`}
-              className="bg-white rounded-xl border border-gray-200 p-5 hover:border-blue-300 hover:shadow-sm transition-all group flex flex-col gap-3"
+              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all group flex flex-col gap-3"
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 flex items-center justify-center flex-shrink-0">
-                    <FolderIcon className="w-5 h-5 text-blue-600" />
+                  <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                    <FolderIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                   </div>
-                  <h3 className="font-semibold text-gray-900 truncate group-hover:text-blue-600 transition-colors">
+                  <h3 className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                     {project.name}
                   </h3>
                 </div>
@@ -177,31 +177,31 @@ export const ProjectsPage: React.FC = () => {
               </div>
 
               {project.description && (
-                <p className="text-sm text-gray-500 line-clamp-2">{project.description}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
               )}
 
-              <div className="text-xs text-gray-500 space-y-1 mt-auto pt-2 border-t border-gray-100">
+              <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
                 {project.clientName && (
                   <div className="flex justify-between">
                     <span>Client</span>
-                    <span className="font-medium text-gray-700">{project.clientName}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{project.clientName}</span>
                   </div>
                 )}
                 {project.caseNumber && (
                   <div className="flex justify-between">
                     <span>Case #</span>
-                    <span className="font-medium text-gray-700">{project.caseNumber}</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{project.caseNumber}</span>
                   </div>
                 )}
                 <div className="flex justify-between">
                   <span className="flex items-center gap-1">
                     <DocumentIcon className="w-3.5 h-3.5" /> Documents
                   </span>
-                  <span className="font-medium text-gray-700">{project.documentCount}</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">{project.documentCount}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Created</span>
-                  <span className="font-medium text-gray-700">{formatDate(project.createdAt)}</span>
+                  <span className="font-medium text-gray-700 dark:text-gray-300">{formatDate(project.createdAt)}</span>
                 </div>
               </div>
             </Link>
@@ -213,24 +213,24 @@ export const ProjectsPage: React.FC = () => {
       <Dialog open={modalOpen} onClose={() => { setModalOpen(false); reset(); }} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="bg-white rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-              <DialogTitle className="text-base font-semibold text-gray-900">
+          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+              <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">
                 New Project
               </DialogTitle>
-              <button onClick={() => { setModalOpen(false); reset(); }} className="text-gray-400 hover:text-gray-600">
+              <button onClick={() => { setModalOpen(false); reset(); }} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Project Name <span className="text-red-500">*</span>
                 </label>
                 <input
                   {...register('name')}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="e.g. Smith v. Jones"
                 />
                 {errors.name && <p className="mt-1 text-xs text-red-500">{errors.name.message}</p>}
@@ -238,28 +238,28 @@ export const ProjectsPage: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Client Name</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Client Name</label>
                   <input
                     {...register('clientName')}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="Client name"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Case Number</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Case Number</label>
                   <input
                     {...register('caseNumber')}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
                     placeholder="e.g. 2024-CV-0001"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Status</label>
                 <select
                   {...register('status')}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="Intake">Intake</option>
                   <option value="Active">Active</option>
@@ -279,25 +279,25 @@ export const ProjectsPage: React.FC = () => {
                   <input
                     type="date"
                     {...register('startDate')}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">End Date</label>
                   <input
                     type="date"
                     {...register('endDate')}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                 <textarea
                   {...register('description')}
                   rows={3}
-                  className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
                   placeholder="Brief description of the matter…"
                 />
               </div>
@@ -306,7 +306,7 @@ export const ProjectsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => { setModalOpen(false); reset(); }}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
                 >
                   Cancel
                 </button>

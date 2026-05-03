@@ -48,6 +48,8 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString));
 
 // Register Services
+builder.Services.Configure<UploadOptions>(builder.Configuration.GetSection(UploadOptions.SectionName));
+builder.Services.Configure<TierStorageLimits>(builder.Configuration.GetSection(TierStorageLimits.SectionName));
 builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
 
 // Use ACS (Azure Communication Services) in production; console stub in development
