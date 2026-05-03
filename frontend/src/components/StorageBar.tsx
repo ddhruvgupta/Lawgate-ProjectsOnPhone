@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useCompany } from '../hooks/useCompany';
 import { formatBytes } from '../utils/formatters';
 
@@ -34,6 +34,18 @@ function getBarColor(pct: number): string {
 export const StorageBar: React.FC = () => {
   const { data: company, isLoading } = useCompany();
 
+  // Capture "now" once on mount — avoids calling the impure Date.now() during render
+  const [nowMs] = useState<number>(() => Date.now());
+
+  // Days left on trial — computed before any early return to satisfy rules-of-hooks
+  const trialDaysLeft = useMemo<number | null>(() => {
+    if (company?.subscriptionTier === 'Trial' && company?.subscriptionEndDate) {
+      const diff = new Date(company.subscriptionEndDate).getTime() - nowMs;
+      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+    return null;
+  }, [company?.subscriptionTier, company?.subscriptionEndDate, nowMs]);
+
   if (isLoading) {
     return (
       <div className="px-4 py-3 space-y-2" aria-hidden="true">
@@ -53,15 +65,6 @@ export const StorageBar: React.FC = () => {
 
   const tierMeta = TIER_META[company.subscriptionTier] ?? TIER_META['Trial'];
   const barColor = getBarColor(pct);
-
-  // Days left on trial
-  const trialDaysLeft = useMemo<number | null>(() => {
-    if (company.subscriptionTier === 'Trial' && company.subscriptionEndDate) {
-      const diff = new Date(company.subscriptionEndDate).getTime() - Date.now();
-      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-    }
-    return null;
-  }, [company.subscriptionTier, company.subscriptionEndDate]);
 
   return (
     <div className="px-4 py-3 space-y-2">
