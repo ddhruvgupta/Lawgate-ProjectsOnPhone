@@ -212,10 +212,7 @@ export const ProjectDetailPage: React.FC = () => {
       setUploadOpen(false);
     } catch (err) {
       console.error('[Upload] Failed', err);
-      showToast(
-        err instanceof Error ? err.message : 'Upload failed. Please try again.',
-        'error',
-      );
+      showToast('Upload failed. Please try again.', 'error');
     } finally {
       setIsUploading(false);
     }

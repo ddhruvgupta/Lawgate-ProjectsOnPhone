@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { CompanyInfo } from '../types'
 
@@ -215,12 +215,12 @@ describe('StorageBar', () => {
 
   // ── Renders nothing when API returns null/no data ───────────────────────
 
-  it('renders nothing when query returns no data', () => {
+  it('renders nothing when query returns no data', async () => {
     mockGetMyCompany.mockResolvedValue(null)
 
     const { container } = renderStorageBar()
 
-    // Nothing rendered except the wrapper
-    expect(container.firstChild).toBeNull()
+    // Wait for the loading state to clear, then nothing should be rendered
+    await waitFor(() => expect(container.firstChild).toBeNull())
   })
 })

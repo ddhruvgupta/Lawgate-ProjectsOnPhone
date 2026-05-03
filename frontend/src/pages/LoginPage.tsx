@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { useToast } from '../contexts/ToastContext';
 import { APP_NAME } from '../constants/app';
 
 export const LoginPage: React.FC = () => {
@@ -12,6 +13,7 @@ export const LoginPage: React.FC = () => {
   const [showResendVerification, setShowResendVerification] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
+  const { showToast } = useToast();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -28,6 +30,7 @@ export const LoginPage: React.FC = () => {
         setShowResendVerification(true);
       }
       setError(msg);
+      showToast(msg, 'error');
     } finally {
       setIsLoading(false);
     }
