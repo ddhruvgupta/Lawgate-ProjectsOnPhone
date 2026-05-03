@@ -1,10 +1,14 @@
 using FluentAssertions;
 using LegalDocSystem.Application.DTOs.Users;
+using LegalDocSystem.Application.Interfaces;
 using LegalDocSystem.Domain.Entities;
 using LegalDocSystem.Domain.Enums;
 using LegalDocSystem.Infrastructure.Data;
 using LegalDocSystem.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
+using NSubstitute;
 using Xunit;
 
 namespace LegalDocSystem.UnitTests.Services;
@@ -20,7 +24,9 @@ public class UserServiceTests : IDisposable
             .UseInMemoryDatabase(databaseName: $"UserServiceTests_{Guid.NewGuid()}")
             .Options;
         _context = new ApplicationDbContext(options);
-        _sut = new UserService(_context);
+        var emailService = Substitute.For<IEmailService>();
+        var configuration = Substitute.For<IConfiguration>();
+        _sut = new UserService(_context, emailService, configuration, NullLogger<UserService>.Instance);
     }
 
     private Company CreateAndSaveCompany(string email = "company@test.com")
