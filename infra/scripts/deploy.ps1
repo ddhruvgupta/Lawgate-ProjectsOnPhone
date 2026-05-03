@@ -140,10 +140,13 @@ function Read-SecretFromKeyVault([string]$rg, [string]$secretName, [string]$keyV
 
     if (-not $kvName) {
         $savedEAP = $ErrorActionPreference; $ErrorActionPreference = 'Continue'
-        $keyVaultNames = @(az keyvault list --resource-group $rg --query '[].name' -o tsv 2>$null)
+        $kvListRaw = az keyvault list --resource-group $rg --query '[].name' -o tsv 2>$null
         $ErrorActionPreference = $savedEAP
 
-        if (-not $keyVaultNames -or $keyVaultNames.Count -eq 0) { return $null }
+        # Guard against $null, error objects, or non-string results (e.g. access-denied returns nothing)
+        $keyVaultNames = @($kvListRaw | Where-Object { $_ -is [string] -and $_.Trim() -ne '' })
+
+        if ($keyVaultNames.Count -eq 0) { return $null }
 
         # Prefer vaults matching the project naming convention (lg-kv-*)
         $matchingNames = @($keyVaultNames | Where-Object { $_ -like 'lg-kv-*' })
