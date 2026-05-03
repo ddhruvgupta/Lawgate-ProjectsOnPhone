@@ -22,6 +22,7 @@ function makeAuthContext(user: User | null): AuthContextType {
     logout: vi.fn(),
     forgotPassword: vi.fn(),
     resetPassword: vi.fn(),
+    markEmailVerified: vi.fn(),
     isAuthenticated: user !== null,
     isLoading: false,
   }

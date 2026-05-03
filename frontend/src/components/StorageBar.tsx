@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useCompany } from '../hooks/useCompany';
 import { formatBytes } from '../utils/formatters';
 
@@ -37,14 +37,17 @@ export const StorageBar: React.FC = () => {
   // Capture "now" once on mount — avoids calling the impure Date.now() during render
   const [nowMs] = useState<number>(() => Date.now());
 
-  // Days left on trial — computed before any early return to satisfy rules-of-hooks
-  const trialDaysLeft = useMemo<number | null>(() => {
-    if (company?.subscriptionTier === 'Trial' && company?.subscriptionEndDate) {
-      const diff = new Date(company.subscriptionEndDate).getTime() - nowMs;
-      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-    }
-    return null;
-  }, [company?.subscriptionTier, company?.subscriptionEndDate, nowMs]);
+  // Days left on trial — plain expression; React Compiler will auto-memoize
+  const trialDaysLeft: number | null =
+    company?.subscriptionTier === 'Trial' && company?.subscriptionEndDate
+      ? Math.max(
+          0,
+          Math.ceil(
+            (new Date(company.subscriptionEndDate).getTime() - nowMs) /
+              (1000 * 60 * 60 * 24),
+          ),
+        )
+      : null;
 
   if (isLoading) {
     return (
