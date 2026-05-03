@@ -183,6 +183,7 @@ public class AuthServiceTests : IDisposable
     {
         // Act
         await _sut.RegisterAsync(ValidRegisterDto());
+        await Task.Delay(200); // allow fire-and-forget Task.Run to complete
 
         // Assert
         await _emailService.Received(1)
@@ -543,6 +544,7 @@ public class AuthServiceTests : IDisposable
 
         // Act
         await _sut.ResendVerificationEmailAsync("owner@test.com");
+        await Task.Delay(200); // allow fire-and-forget Task.Run to complete
 
         // Assert
         await _emailService.Received(1)
