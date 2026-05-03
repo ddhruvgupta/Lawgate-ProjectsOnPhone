@@ -370,6 +370,7 @@ public class AuthServiceTests : IDisposable
 
         // Act
         await _sut.ForgotPasswordAsync("owner@test.com");
+        await Task.Delay(200); // allow fire-and-forget Task.Run to complete
 
         // Assert
         await _emailService.Received(1)
