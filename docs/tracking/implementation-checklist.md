@@ -258,7 +258,7 @@ Add these in **GitHub → Settings → Secrets and variables → Actions → New
 - [x] Rate limiting configured — auth: 10/min, global: 100/min
 - [x] Security headers middleware active — CSP, X-Frame-Options, etc.
 - [ ] Custom domain configured (optional — add `CNAME` to your DNS after deployment)
-- [ ] Review and optimize database indexes (see notes below)
+- [x] Review and optimize database indexes — `AddPerformanceIndexes` migration added (ix_documents_project_status, ix_auditlogs_company_entity, ix_users_refreshtoken)
 - [ ] Load test the `/api/documents/upload-url` and `/api/auth/login` endpoints before launch
 
 ### Database Index Review
