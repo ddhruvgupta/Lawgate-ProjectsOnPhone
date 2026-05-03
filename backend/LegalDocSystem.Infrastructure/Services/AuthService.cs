@@ -134,16 +134,17 @@ public class AuthService : IAuthService
             user.RefreshTokenExpiry = refreshTokenExpiry;
             await _context.SaveChangesAsync();
 
-            // Send verification email (non-blocking — failure should not abort registration)
-            try
+            // Send verification email (fire-and-forget — must not block the registration response)
+            var verificationLink = $"{_frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(rawVerificationToken)}";
+            var registrationEmail = user.Email;
+            var registrationFirstName = user.FirstName;
+            var emailService = _emailService;
+            var logger = _logger;
+            _ = Task.Run(async () =>
             {
-                var verificationLink = $"{_frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(rawVerificationToken)}";
-                await _emailService.SendEmailVerificationAsync(user.Email, user.FirstName, verificationLink);
-            }
-            catch (Exception emailEx)
-            {
-                _logger.LogError(emailEx, "Failed to send verification email to {Email}", user.Email);
-            }
+                try { await emailService.SendEmailVerificationAsync(registrationEmail, registrationFirstName, verificationLink); }
+                catch (Exception emailEx) { logger.LogError(emailEx, "Failed to send verification email to {Email}", registrationEmail); }
+            });
 
             return new TokenResponseDto
             {
@@ -328,15 +329,16 @@ public class AuthService : IAuthService
         user.ResetTokenExpiry = DateTime.UtcNow.AddHours(1);
         await _context.SaveChangesAsync();
 
-        try
+        var resetLink = $"{_frontendBaseUrl}/reset-password?token={Uri.EscapeDataString(rawToken)}";
+        var resetEmail = user.Email;
+        var resetFirstName = user.FirstName;
+        var resetEmailService = _emailService;
+        var resetLogger = _logger;
+        _ = Task.Run(async () =>
         {
-            var resetLink = $"{_frontendBaseUrl}/reset-password?token={Uri.EscapeDataString(rawToken)}";
-            await _emailService.SendPasswordResetEmailAsync(user.Email, user.FirstName, resetLink);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to send password reset email to {Email}", email);
-        }
+            try { await resetEmailService.SendPasswordResetEmailAsync(resetEmail, resetFirstName, resetLink); }
+            catch (Exception ex) { resetLogger.LogError(ex, "Failed to send password reset email to {Email}", resetEmail); }
+        });
     }
 
     public async Task<bool> ResetPasswordAsync(string token, string newPassword)
@@ -399,15 +401,16 @@ public class AuthService : IAuthService
         user.EmailVerificationTokenExpiry = DateTime.UtcNow.AddHours(24);
         await _context.SaveChangesAsync();
 
-        try
+        var verificationLink = $"{_frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(rawToken)}";
+        var resendEmail = user.Email;
+        var resendFirstName = user.FirstName;
+        var resendEmailService = _emailService;
+        var resendLogger = _logger;
+        _ = Task.Run(async () =>
         {
-            var verificationLink = $"{_frontendBaseUrl}/verify-email?token={Uri.EscapeDataString(rawToken)}";
-            await _emailService.SendEmailVerificationAsync(user.Email, user.FirstName, verificationLink);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Failed to resend verification email to {Email}", email);
-        }
+            try { await resendEmailService.SendEmailVerificationAsync(resendEmail, resendFirstName, verificationLink); }
+            catch (Exception ex) { resendLogger.LogError(ex, "Failed to resend verification email to {Email}", resendEmail); }
+        });
     }
 
     public async Task<bool> ValidateTokenAsync(string token)
