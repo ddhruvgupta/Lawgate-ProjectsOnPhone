@@ -10,7 +10,7 @@
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "4270978409051824008"
+      "templateHash": "17068733971726828575"
     }
   },
   "parameters": {
@@ -101,20 +101,6 @@
       "defaultValue": "",
       "metadata": {
         "description": "Azure External ID backend API app client ID — populate after running scripts/setup-external-id.ps1"
-      }
-    },
-    "devAllowedIps": {
-      "type": "array",
-      "defaultValue": [],
-      "metadata": {
-        "description": "Developer IP addresses to allowlist on the PostgreSQL public-access firewall. Add each dev machine IP here."
-      }
-    },
-    "appServiceAllowedIps": {
-      "type": "array",
-      "defaultValue": [],
-      "metadata": {
-        "description": "App Service outbound IPs to allowlist instead of the broad AllowAzureServices rule. Get via: az webapp show --query outboundIpAddresses"
       }
     }
   },
@@ -642,11 +628,11 @@
           "databaseName": {
             "value": "lawgate_db"
           },
-          "devAllowedIps": {
-            "value": "[parameters('devAllowedIps')]"
+          "delegatedSubnetResourceId": {
+            "value": "[reference('vnet').outputs.postgresSubnetId.value]"
           },
-          "appServiceAllowedIps": {
-            "value": "[parameters('appServiceAllowedIps')]"
+          "privateDnsZoneArmResourceId": {
+            "value": "[reference('vnet').outputs.privateDnsZoneId.value]"
           }
         },
         "template": {
@@ -661,7 +647,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "2101361415503722233"
+              "templateHash": "17343288930984624701"
             }
           },
           "parameters": {
@@ -740,20 +726,6 @@
               "metadata": {
                 "description": "Private DNS zone resource ID — required when delegatedSubnetResourceId is set"
               }
-            },
-            "devAllowedIps": {
-              "type": "array",
-              "defaultValue": [],
-              "metadata": {
-                "description": "Developer IP addresses allowed through the public-access firewall. Only used when delegatedSubnetResourceId is empty (public access mode)."
-              }
-            },
-            "appServiceAllowedIps": {
-              "type": "array",
-              "defaultValue": [],
-              "metadata": {
-                "description": "App Service outbound IP addresses to allowlist. Replaces the broad AllowAzureServices (0.0.0.0) rule. Get via: az webapp show --query outboundIpAddresses"
-              }
             }
           },
           "resources": {
@@ -794,40 +766,6 @@
                 "network": "[if(not(empty(parameters('delegatedSubnetResourceId'))), createObject('delegatedSubnetResourceId', parameters('delegatedSubnetResourceId'), 'privateDnsZoneArmResourceId', parameters('privateDnsZoneArmResourceId'), 'publicNetworkAccess', 'Disabled'), createObject('publicNetworkAccess', 'Enabled'))]"
               }
             },
-            "appServiceFirewallRules": {
-              "copy": {
-                "name": "appServiceFirewallRules",
-                "count": "[length(parameters('appServiceAllowedIps'))]"
-              },
-              "condition": "[empty(parameters('delegatedSubnetResourceId'))]",
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
-              "apiVersion": "2023-12-01-preview",
-              "name": "[format('{0}/{1}', parameters('serverName'), format('appservice-ip-{0}', copyIndex()))]",
-              "properties": {
-                "startIpAddress": "[parameters('appServiceAllowedIps')[copyIndex()]]",
-                "endIpAddress": "[parameters('appServiceAllowedIps')[copyIndex()]]"
-              },
-              "dependsOn": [
-                "postgresServer"
-              ]
-            },
-            "devFirewallRules": {
-              "copy": {
-                "name": "devFirewallRules",
-                "count": "[length(parameters('devAllowedIps'))]"
-              },
-              "condition": "[empty(parameters('delegatedSubnetResourceId'))]",
-              "type": "Microsoft.DBforPostgreSQL/flexibleServers/firewallRules",
-              "apiVersion": "2023-12-01-preview",
-              "name": "[format('{0}/{1}', parameters('serverName'), format('dev-ip-{0}', copyIndex()))]",
-              "properties": {
-                "startIpAddress": "[parameters('devAllowedIps')[copyIndex()]]",
-                "endIpAddress": "[parameters('devAllowedIps')[copyIndex()]]"
-              },
-              "dependsOn": [
-                "postgresServer"
-              ]
-            },
             "applicationDatabase": {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
               "apiVersion": "2023-12-01-preview",
@@ -859,7 +797,10 @@
             "delegatedSubnetRequiresPrivateDnsZone": "[or(empty(parameters('delegatedSubnetResourceId')), not(empty(parameters('privateDnsZoneArmResourceId'))))]"
           }
         }
-      }
+      },
+      "dependsOn": [
+        "vnet"
+      ]
     },
     "staticWebApp": {
       "type": "Microsoft.Resources/deployments",
@@ -973,6 +914,9 @@
           "corsOrigin": {
             "value": "[format('https://{0}', reference('staticWebApp').outputs.defaultHostname.value)]"
           },
+          "frontendBaseUrl": {
+            "value": "[format('https://{0}', reference('staticWebApp').outputs.defaultHostname.value)]"
+          },
           "externalIdTenantId": {
             "value": "[parameters('externalIdTenantId')]"
           },
@@ -995,7 +939,7 @@
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "14615299417653092128"
+              "templateHash": "1454268448527387974"
             }
           },
           "parameters": {
@@ -1033,6 +977,12 @@
               "type": "string",
               "metadata": {
                 "description": "CORS allowed origin (Static Web App URL)"
+              }
+            },
+            "frontendBaseUrl": {
+              "type": "string",
+              "metadata": {
+                "description": "Frontend base URL used in email links (Static Web App URL, e.g. https://<hostname>)"
               }
             },
             "externalIdTenantId": {
@@ -1141,6 +1091,10 @@
                     {
                       "name": "Cors__AllowedOrigins__0",
                       "value": "[parameters('corsOrigin')]"
+                    },
+                    {
+                      "name": "App__FrontendBaseUrl",
+                      "value": "[parameters('frontendBaseUrl')]"
                     },
                     {
                       "name": "ExternalId__TenantId",

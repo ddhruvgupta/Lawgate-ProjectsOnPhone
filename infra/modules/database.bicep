@@ -35,7 +35,7 @@ param delegatedSubnetResourceId string = ''
 param privateDnsZoneArmResourceId string = ''
 
 // Fail fast at deployment time if the caller supplied a delegated subnet but forgot the DNS zone.
-assert delegatedSubnetRequiresPrivateDnsZone = empty(delegatedSubnetResourceId) || !empty(privateDnsZoneArmResourceId) : 'privateDnsZoneArmResourceId must be provided when delegatedSubnetResourceId is set.'
+assert delegatedSubnetRequiresPrivateDnsZone = empty(delegatedSubnetResourceId) || !empty(privateDnsZoneArmResourceId)
 
 // ---------------------------------------------------------------------------
 // PostgreSQL Flexible Server

@@ -168,6 +168,7 @@ module appService 'modules/app-service.bicep' = {
     appInsightsConnectionString: monitoring.outputs.appInsightsConnectionString
     keyVaultUri: keyVaultUri
     corsOrigin: 'https://${staticWebApp.outputs.defaultHostname}'
+    frontendBaseUrl: 'https://${staticWebApp.outputs.defaultHostname}'
     externalIdTenantId: externalIdTenantId
     externalIdAudience: externalIdApiClientId
     // VNet integration — outbound traffic from the App Service routes through

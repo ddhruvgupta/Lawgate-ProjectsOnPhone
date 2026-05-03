@@ -16,6 +16,9 @@ param keyVaultUri string
 @description('CORS allowed origin (Static Web App URL)')
 param corsOrigin string
 
+@description('Frontend base URL used in email links (Static Web App URL, e.g. https://<hostname>)')
+param frontendBaseUrl string
+
 @description('Azure External ID tenant ID — leave empty until setup-external-id.ps1 is run')
 param externalIdTenantId string = ''
 
@@ -129,6 +132,11 @@ resource webApp 'Microsoft.Web/sites@2024-04-01' = {
         {
           name: 'Cors__AllowedOrigins__0'
           value: corsOrigin
+        }
+        // Frontend base URL — used to build links in verification/password-reset emails
+        {
+          name: 'App__FrontendBaseUrl'
+          value: frontendBaseUrl
         }
         // Azure External ID (populated after running setup-external-id.ps1)
         {
