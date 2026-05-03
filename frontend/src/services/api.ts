@@ -78,6 +78,18 @@ class ApiService {
           }
         }
 
+        // Extract the user-friendly message from the API response body.
+        // The backend always returns { error: string, errors?: string[] } on failure.
+        // Without this, callers would see the raw Axios "Request failed with status code 4xx".
+        const apiError = error.response?.data;
+        if (apiError) {
+          const msg =
+            apiError.errors && apiError.errors.length > 0
+              ? apiError.errors.join('. ')
+              : apiError.message || error.message;
+          return Promise.reject(new Error(msg));
+        }
+
         return Promise.reject(error);
       }
     );
