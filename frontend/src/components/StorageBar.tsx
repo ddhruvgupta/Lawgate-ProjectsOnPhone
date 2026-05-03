@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useCompany } from '../hooks/useCompany';
 import { formatBytes } from '../utils/formatters';
 
@@ -55,11 +55,13 @@ export const StorageBar: React.FC = () => {
   const barColor = getBarColor(pct);
 
   // Days left on trial
-  let trialDaysLeft: number | null = null;
-  if (company.subscriptionTier === 'Trial' && company.subscriptionEndDate) {
-    const diff = new Date(company.subscriptionEndDate).getTime() - Date.now();
-    trialDaysLeft = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
-  }
+  const trialDaysLeft = useMemo<number | null>(() => {
+    if (company.subscriptionTier === 'Trial' && company.subscriptionEndDate) {
+      const diff = new Date(company.subscriptionEndDate).getTime() - Date.now();
+      return Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+    }
+    return null;
+  }, [company.subscriptionTier, company.subscriptionEndDate]);
 
   return (
     <div className="px-4 py-3 space-y-2">
