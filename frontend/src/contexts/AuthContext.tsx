@@ -21,6 +21,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setIsLoading(false);
   }, []);
 
+  // Sync auth state across tabs — when another tab calls markEmailVerified(),
+  // logout(), or login(), the 'storage' event fires here and we re-read localStorage.
+  useEffect(() => {
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'user') {
+        setUser(e.newValue ? (JSON.parse(e.newValue) as User) : null);
+      }
+      if (e.key === 'token') {
+        setToken(e.newValue);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
   const login = async (email: string, password: string) => {
     try {
       const response = await apiService.login({ email, password });
