@@ -1,16 +1,11 @@
 {
   "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-  "languageVersion": "2.1-experimental",
   "contentVersion": "1.0.0.0",
   "metadata": {
-    "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-    "_EXPERIMENTAL_FEATURES_ENABLED": [
-      "Asserts"
-    ],
     "_generator": {
       "name": "bicep",
       "version": "0.42.1.51946",
-      "templateHash": "17068733971726828575"
+      "templateHash": "176078634888046777"
     }
   },
   "parameters": {
@@ -113,15 +108,8 @@
     "newDbServerName": "[format('{0}-db-{1}', variables('namePrefix'), take(variables('suffix'), 6))]",
     "dbServerFqdn": "[if(variables('useExistingDb'), format('{0}.postgres.database.azure.com', parameters('existingDbServerName')), format('{0}.postgres.database.azure.com', variables('newDbServerName')))]"
   },
-  "resources": {
-    "existingDbServer": {
-      "condition": "[variables('useExistingDb')]",
-      "existing": true,
-      "type": "Microsoft.DBforPostgreSQL/flexibleServers",
-      "apiVersion": "2023-12-01-preview",
-      "name": "[if(variables('useExistingDb'), parameters('existingDbServerName'), 'placeholder')]"
-    },
-    "existingAppDb": {
+  "resources": [
+    {
       "condition": "[variables('useExistingDb')]",
       "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
       "apiVersion": "2023-12-01-preview",
@@ -131,25 +119,7 @@
         "collation": "en_US.utf8"
       }
     },
-    "existingAcs": {
-      "existing": true,
-      "type": "Microsoft.Communication/communicationServices",
-      "apiVersion": "2023-04-01",
-      "name": "lawgate-prod-acs"
-    },
-    "existingEmailService": {
-      "existing": true,
-      "type": "Microsoft.Communication/emailServices",
-      "apiVersion": "2023-04-01",
-      "name": "lawgate-prod-acs-email"
-    },
-    "existingManagedDomain": {
-      "existing": true,
-      "type": "Microsoft.Communication/emailServices/domains",
-      "apiVersion": "2023-04-01",
-      "name": "[format('{0}/{1}', 'lawgate-prod-acs-email', 'AzureManagedDomain')]"
-    },
-    "monitoring": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "monitoring",
@@ -171,17 +141,12 @@
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.1-experimental",
           "contentVersion": "1.0.0.0",
           "metadata": {
-            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": [
-              "Asserts"
-            ],
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "9470437833172638341"
+              "templateHash": "9658151302031837450"
             }
           },
           "parameters": {
@@ -213,8 +178,8 @@
               }
             }
           },
-          "resources": {
-            "logAnalyticsWorkspace": {
+          "resources": [
+            {
               "type": "Microsoft.OperationalInsights/workspaces",
               "apiVersion": "2023-09-01",
               "name": "[parameters('workspaceName')]",
@@ -229,7 +194,7 @@
                 }
               }
             },
-            "appInsights": {
+            {
               "type": "Microsoft.Insights/components",
               "apiVersion": "2020-02-02",
               "name": "[parameters('appInsightsName')]",
@@ -244,17 +209,17 @@
                 "publicNetworkAccessForQuery": "Enabled"
               },
               "dependsOn": [
-                "logAnalyticsWorkspace"
+                "[resourceId('Microsoft.OperationalInsights/workspaces', parameters('workspaceName'))]"
               ]
             }
-          },
+          ],
           "outputs": {
             "appInsightsConnectionString": {
               "type": "string",
               "metadata": {
                 "description": "App Insights connection string — safe to use in app settings directly"
               },
-              "value": "[reference('appInsights').ConnectionString]"
+              "value": "[reference(resourceId('Microsoft.Insights/components', parameters('appInsightsName')), '2020-02-02').ConnectionString]"
             },
             "appInsightsId": {
               "type": "string",
@@ -274,7 +239,7 @@
         }
       }
     },
-    "storage": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "storage",
@@ -296,17 +261,12 @@
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.1-experimental",
           "contentVersion": "1.0.0.0",
           "metadata": {
-            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": [
-              "Asserts"
-            ],
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "11125507353717947138"
+              "templateHash": "12966580392848406651"
             }
           },
           "parameters": {
@@ -332,8 +292,8 @@
               }
             }
           },
-          "resources": {
-            "storageAccount": {
+          "resources": [
+            {
               "type": "Microsoft.Storage/storageAccounts",
               "apiVersion": "2023-05-01",
               "name": "[parameters('storageAccountName')]",
@@ -354,7 +314,7 @@
                 }
               }
             },
-            "blobService": {
+            {
               "type": "Microsoft.Storage/storageAccounts/blobServices",
               "apiVersion": "2023-05-01",
               "name": "[format('{0}/{1}', parameters('storageAccountName'), 'default')]",
@@ -370,10 +330,10 @@
                 "isVersioningEnabled": true
               },
               "dependsOn": [
-                "storageAccount"
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
               ]
             },
-            "legalDocumentsContainer": {
+            {
               "type": "Microsoft.Storage/storageAccounts/blobServices/containers",
               "apiVersion": "2023-05-01",
               "name": "[format('{0}/{1}/{2}', parameters('storageAccountName'), 'default', parameters('containerName'))]",
@@ -384,10 +344,10 @@
                 }
               },
               "dependsOn": [
-                "blobService"
+                "[resourceId('Microsoft.Storage/storageAccounts/blobServices', parameters('storageAccountName'), 'default')]"
               ]
             },
-            "defenderForStorage": {
+            {
               "type": "Microsoft.Security/defenderForStorageSettings",
               "apiVersion": "2022-12-01-preview",
               "scope": "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]",
@@ -406,10 +366,10 @@
                 "overrideSubscriptionLevelSettings": true
               },
               "dependsOn": [
-                "storageAccount"
+                "[resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName'))]"
               ]
             }
-          },
+          ],
           "outputs": {
             "storageAccountName": {
               "type": "string",
@@ -423,7 +383,7 @@
         }
       }
     },
-    "vnet": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "vnet",
@@ -445,17 +405,12 @@
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.1-experimental",
           "contentVersion": "1.0.0.0",
           "metadata": {
-            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": [
-              "Asserts"
-            ],
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "6051786391756666334"
+              "templateHash": "13802607733842185096"
             }
           },
           "parameters": {
@@ -499,8 +454,8 @@
             "appServiceSubnetName": "[if(variables('useExistingVnet'), parameters('existingAppServiceSubnetName'), 'app-service-subnet')]",
             "postgresSubnetName": "[if(variables('useExistingVnet'), parameters('existingPostgresSubnetName'), 'postgres-subnet')]"
           },
-          "resources": {
-            "newVnet": {
+          "resources": [
+            {
               "condition": "[not(variables('useExistingVnet'))]",
               "type": "Microsoft.Network/virtualNetworks",
               "apiVersion": "2024-01-01",
@@ -544,14 +499,14 @@
                 ]
               }
             },
-            "newDnsZone": {
+            {
               "condition": "[not(variables('useExistingVnet'))]",
               "type": "Microsoft.Network/privateDnsZones",
               "apiVersion": "2020-06-01",
               "name": "privatelink.postgres.database.azure.com",
               "location": "global"
             },
-            "newDnsVnetLink": {
+            {
               "condition": "[not(variables('useExistingVnet'))]",
               "type": "Microsoft.Network/privateDnsZones/virtualNetworkLinks",
               "apiVersion": "2020-06-01",
@@ -564,11 +519,11 @@
                 "registrationEnabled": false
               },
               "dependsOn": [
-                "newDnsZone",
-                "newVnet"
+                "[resourceId('Microsoft.Network/privateDnsZones', 'privatelink.postgres.database.azure.com')]",
+                "[resourceId('Microsoft.Network/virtualNetworks', parameters('vnetName'))]"
               ]
             }
-          },
+          ],
           "outputs": {
             "appServiceSubnetId": {
               "type": "string",
@@ -602,7 +557,7 @@
         }
       }
     },
-    "database": {
+    {
       "condition": "[not(variables('useExistingDb'))]",
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
@@ -629,25 +584,20 @@
             "value": "lawgate_db"
           },
           "delegatedSubnetResourceId": {
-            "value": "[reference('vnet').outputs.postgresSubnetId.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vnet'), '2025-04-01').outputs.postgresSubnetId.value]"
           },
           "privateDnsZoneArmResourceId": {
-            "value": "[reference('vnet').outputs.privateDnsZoneId.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vnet'), '2025-04-01').outputs.privateDnsZoneId.value]"
           }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.1-experimental",
           "contentVersion": "1.0.0.0",
           "metadata": {
-            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": [
-              "Asserts"
-            ],
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "17343288930984624701"
+              "templateHash": "12053169046143277204"
             }
           },
           "parameters": {
@@ -728,8 +678,8 @@
               }
             }
           },
-          "resources": {
-            "postgresServer": {
+          "resources": [
+            {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers",
               "apiVersion": "2023-12-01-preview",
               "name": "[parameters('serverName')]",
@@ -766,7 +716,7 @@
                 "network": "[if(not(empty(parameters('delegatedSubnetResourceId'))), createObject('delegatedSubnetResourceId', parameters('delegatedSubnetResourceId'), 'privateDnsZoneArmResourceId', parameters('privateDnsZoneArmResourceId'), 'publicNetworkAccess', 'Disabled'), createObject('publicNetworkAccess', 'Enabled'))]"
               }
             },
-            "applicationDatabase": {
+            {
               "type": "Microsoft.DBforPostgreSQL/flexibleServers/databases",
               "apiVersion": "2023-12-01-preview",
               "name": "[format('{0}/{1}', parameters('serverName'), parameters('databaseName'))]",
@@ -775,10 +725,10 @@
                 "collation": "en_US.utf8"
               },
               "dependsOn": [
-                "postgresServer"
+                "[resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName'))]"
               ]
             }
-          },
+          ],
           "outputs": {
             "serverName": {
               "type": "string",
@@ -786,23 +736,20 @@
             },
             "serverFqdn": {
               "type": "string",
-              "value": "[reference('postgresServer').fullyQualifiedDomainName]"
+              "value": "[reference(resourceId('Microsoft.DBforPostgreSQL/flexibleServers', parameters('serverName')), '2023-12-01-preview').fullyQualifiedDomainName]"
             },
             "databaseName": {
               "type": "string",
               "value": "[parameters('databaseName')]"
             }
-          },
-          "asserts": {
-            "delegatedSubnetRequiresPrivateDnsZone": "[or(empty(parameters('delegatedSubnetResourceId')), not(empty(parameters('privateDnsZoneArmResourceId'))))]"
           }
         }
       },
       "dependsOn": [
-        "vnet"
+        "[resourceId('Microsoft.Resources/deployments', 'vnet')]"
       ]
     },
-    "staticWebApp": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "staticWebApp",
@@ -821,17 +768,12 @@
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.1-experimental",
           "contentVersion": "1.0.0.0",
           "metadata": {
-            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": [
-              "Asserts"
-            ],
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "9945809254965233739"
+              "templateHash": "2502958017157208931"
             }
           },
           "parameters": {
@@ -856,8 +798,8 @@
               }
             }
           },
-          "resources": {
-            "staticWebApp": {
+          "resources": [
+            {
               "type": "Microsoft.Web/staticSites",
               "apiVersion": "2024-04-01",
               "name": "[parameters('staticWebAppName')]",
@@ -872,11 +814,11 @@
                 "enterpriseGradeCdnStatus": "Disabled"
               }
             }
-          },
+          ],
           "outputs": {
             "defaultHostname": {
               "type": "string",
-              "value": "[reference('staticWebApp').defaultHostname]"
+              "value": "[reference(resourceId('Microsoft.Web/staticSites', parameters('staticWebAppName')), '2024-04-01').defaultHostname]"
             },
             "staticWebAppName": {
               "type": "string",
@@ -886,7 +828,7 @@
         }
       }
     },
-    "appService": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "appService",
@@ -906,16 +848,16 @@
             "value": "[format('{0}-api-{1}', variables('namePrefix'), take(variables('suffix'), 6))]"
           },
           "appInsightsConnectionString": {
-            "value": "[reference('monitoring').outputs.appInsightsConnectionString.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value]"
           },
           "keyVaultUri": {
             "value": "[variables('keyVaultUri')]"
           },
           "corsOrigin": {
-            "value": "[format('https://{0}', reference('staticWebApp').outputs.defaultHostname.value)]"
+            "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'staticWebApp'), '2025-04-01').outputs.defaultHostname.value)]"
           },
           "frontendBaseUrl": {
-            "value": "[format('https://{0}', reference('staticWebApp').outputs.defaultHostname.value)]"
+            "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'staticWebApp'), '2025-04-01').outputs.defaultHostname.value)]"
           },
           "externalIdTenantId": {
             "value": "[parameters('externalIdTenantId')]"
@@ -924,22 +866,17 @@
             "value": "[parameters('externalIdApiClientId')]"
           },
           "subnetId": {
-            "value": "[reference('vnet').outputs.appServiceSubnetId.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'vnet'), '2025-04-01').outputs.appServiceSubnetId.value]"
           }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.1-experimental",
           "contentVersion": "1.0.0.0",
           "metadata": {
-            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": [
-              "Asserts"
-            ],
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "1454268448527387974"
+              "templateHash": "3095396257475262063"
             }
           },
           "parameters": {
@@ -1007,8 +944,8 @@
               }
             }
           },
-          "resources": {
-            "appServicePlan": {
+          "resources": [
+            {
               "type": "Microsoft.Web/serverfarms",
               "apiVersion": "2024-04-01",
               "name": "[parameters('appServicePlanName')]",
@@ -1022,7 +959,7 @@
                 "reserved": true
               }
             },
-            "webApp": {
+            {
               "type": "Microsoft.Web/sites",
               "apiVersion": "2024-04-01",
               "name": "[parameters('webAppName')]",
@@ -1116,10 +1053,10 @@
                 }
               },
               "dependsOn": [
-                "appServicePlan"
+                "[resourceId('Microsoft.Web/serverfarms', parameters('appServicePlanName'))]"
               ]
             }
-          },
+          ],
           "outputs": {
             "webAppName": {
               "type": "string",
@@ -1127,29 +1064,29 @@
             },
             "defaultHostname": {
               "type": "string",
-              "value": "[reference('webApp').defaultHostName]"
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('webAppName')), '2024-04-01').defaultHostName]"
             },
             "apiUrl": {
               "type": "string",
-              "value": "[format('https://{0}', reference('webApp').defaultHostName)]"
+              "value": "[format('https://{0}', reference(resourceId('Microsoft.Web/sites', parameters('webAppName')), '2024-04-01').defaultHostName)]"
             },
             "principalId": {
               "type": "string",
               "metadata": {
                 "description": "Principal ID of the system-assigned managed identity — passed to Key Vault module for RBAC"
               },
-              "value": "[reference('webApp', '2024-04-01', 'full').identity.principalId]"
+              "value": "[reference(resourceId('Microsoft.Web/sites', parameters('webAppName')), '2024-04-01', 'full').identity.principalId]"
             }
           }
         }
       },
       "dependsOn": [
-        "monitoring",
-        "staticWebApp",
-        "vnet"
+        "[resourceId('Microsoft.Resources/deployments', 'monitoring')]",
+        "[resourceId('Microsoft.Resources/deployments', 'staticWebApp')]",
+        "[resourceId('Microsoft.Resources/deployments', 'vnet')]"
       ]
     },
-    "keyvault": {
+    {
       "type": "Microsoft.Resources/deployments",
       "apiVersion": "2025-04-01",
       "name": "keyvault",
@@ -1172,31 +1109,26 @@
             "value": "[parameters('jwtSecretKey')]"
           },
           "storageAccountName": {
-            "value": "[reference('storage').outputs.storageAccountName.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.storageAccountName.value]"
           },
           "appServicePrincipalId": {
-            "value": "[reference('appService').outputs.principalId.value]"
+            "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appService'), '2025-04-01').outputs.principalId.value]"
           },
           "communicationServiceConnectionString": {
-            "value": "[listKeys('existingAcs', '2023-04-01').primaryConnectionString]"
+            "value": "[listKeys(resourceId('Microsoft.Communication/communicationServices', 'lawgate-prod-acs'), '2023-04-01').primaryConnectionString]"
           },
           "acsSenderDomain": {
-            "value": "[reference('existingManagedDomain').mailFromSenderDomain]"
+            "value": "[reference(resourceId('Microsoft.Communication/emailServices/domains', 'lawgate-prod-acs-email', 'AzureManagedDomain'), '2023-04-01').mailFromSenderDomain]"
           }
         },
         "template": {
           "$schema": "https://schema.management.azure.com/schemas/2019-04-01/deploymentTemplate.json#",
-          "languageVersion": "2.1-experimental",
           "contentVersion": "1.0.0.0",
           "metadata": {
-            "_EXPERIMENTAL_WARNING": "This template uses ARM features that are experimental. Experimental features should be enabled for testing purposes only, as there are no guarantees about the quality or stability of these features. Do not enable these settings for any production usage, or your production environment may be subject to breaking.",
-            "_EXPERIMENTAL_FEATURES_ENABLED": [
-              "Asserts"
-            ],
             "_generator": {
               "name": "bicep",
               "version": "0.42.1.51946",
-              "templateHash": "9335699534639782967"
+              "templateHash": "6804475017067214662"
             }
           },
           "parameters": {
@@ -1251,14 +1183,8 @@
               }
             }
           },
-          "resources": {
-            "existingStorageAccount": {
-              "existing": true,
-              "type": "Microsoft.Storage/storageAccounts",
-              "apiVersion": "2023-05-01",
-              "name": "[parameters('storageAccountName')]"
-            },
-            "keyVault": {
+          "resources": [
+            {
               "type": "Microsoft.KeyVault/vaults",
               "apiVersion": "2023-07-01",
               "name": "[parameters('keyVaultName')]",
@@ -1281,7 +1207,7 @@
                 }
               }
             },
-            "appServiceSecretUserRole": {
+            {
               "type": "Microsoft.Authorization/roleAssignments",
               "apiVersion": "2022-04-01",
               "scope": "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]",
@@ -1292,10 +1218,10 @@
                 "principalType": "ServicePrincipal"
               },
               "dependsOn": [
-                "keyVault"
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
               ]
             },
-            "dbConnectionStringSecret": {
+            {
               "type": "Microsoft.KeyVault/vaults/secrets",
               "apiVersion": "2023-07-01",
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'DatabaseConnectionString')]",
@@ -1306,10 +1232,10 @@
                 }
               },
               "dependsOn": [
-                "keyVault"
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
               ]
             },
-            "jwtSecretKeySecret": {
+            {
               "type": "Microsoft.KeyVault/vaults/secrets",
               "apiVersion": "2023-07-01",
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'JwtSecretKey')]",
@@ -1320,24 +1246,24 @@
                 }
               },
               "dependsOn": [
-                "keyVault"
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
               ]
             },
-            "storageConnectionStringSecret": {
+            {
               "type": "Microsoft.KeyVault/vaults/secrets",
               "apiVersion": "2023-07-01",
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'AzureStorageConnectionString')]",
               "properties": {
-                "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net', parameters('storageAccountName'), listKeys('existingStorageAccount', '2023-05-01').keys[0].value)]",
+                "value": "[format('DefaultEndpointsProtocol=https;AccountName={0};AccountKey={1};EndpointSuffix=core.windows.net', parameters('storageAccountName'), listKeys(resourceId('Microsoft.Storage/storageAccounts', parameters('storageAccountName')), '2023-05-01').keys[0].value)]",
                 "attributes": {
                   "enabled": true
                 }
               },
               "dependsOn": [
-                "keyVault"
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
               ]
             },
-            "acsConnectionStringSecret": {
+            {
               "type": "Microsoft.KeyVault/vaults/secrets",
               "apiVersion": "2023-07-01",
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'AzureCommunicationServicesConnectionString')]",
@@ -1348,10 +1274,10 @@
                 }
               },
               "dependsOn": [
-                "keyVault"
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
               ]
             },
-            "acsSenderDomainSecret": {
+            {
               "type": "Microsoft.KeyVault/vaults/secrets",
               "apiVersion": "2023-07-01",
               "name": "[format('{0}/{1}', parameters('keyVaultName'), 'AcsSenderDomain')]",
@@ -1362,14 +1288,14 @@
                 }
               },
               "dependsOn": [
-                "keyVault"
+                "[resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName'))]"
               ]
             }
-          },
+          ],
           "outputs": {
             "keyVaultUri": {
               "type": "string",
-              "value": "[reference('keyVault').vaultUri]"
+              "value": "[reference(resourceId('Microsoft.KeyVault/vaults', parameters('keyVaultName')), '2023-07-01').vaultUri]"
             },
             "keyVaultName": {
               "type": "string",
@@ -1383,26 +1309,25 @@
         }
       },
       "dependsOn": [
-        "appService",
-        "existingManagedDomain",
-        "storage"
+        "[resourceId('Microsoft.Resources/deployments', 'appService')]",
+        "[resourceId('Microsoft.Resources/deployments', 'storage')]"
       ]
     }
-  },
+  ],
   "outputs": {
     "apiUrl": {
       "type": "string",
       "metadata": {
         "description": "Backend API URL"
       },
-      "value": "[reference('appService').outputs.apiUrl.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'appService'), '2025-04-01').outputs.apiUrl.value]"
     },
     "frontendUrl": {
       "type": "string",
       "metadata": {
         "description": "Frontend Static Web App URL"
       },
-      "value": "[format('https://{0}', reference('staticWebApp').outputs.defaultHostname.value)]"
+      "value": "[format('https://{0}', reference(resourceId('Microsoft.Resources/deployments', 'staticWebApp'), '2025-04-01').outputs.defaultHostname.value)]"
     },
     "keyVaultName": {
       "type": "string",
@@ -1423,7 +1348,7 @@
       "metadata": {
         "description": "Storage account name"
       },
-      "value": "[reference('storage').outputs.storageAccountName.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'storage'), '2025-04-01').outputs.storageAccountName.value]"
     },
     "communicationServiceName": {
       "type": "string",
@@ -1437,7 +1362,7 @@
       "metadata": {
         "description": "App Insights connection string (safe — not a secret)"
       },
-      "value": "[reference('monitoring').outputs.appInsightsConnectionString.value]"
+      "value": "[reference(resourceId('Microsoft.Resources/deployments', 'monitoring'), '2025-04-01').outputs.appInsightsConnectionString.value]"
     }
   }
 }
