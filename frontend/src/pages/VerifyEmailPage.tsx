@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import React, { useEffect, useRef, useState } from 'react';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -9,7 +9,9 @@ export const VerifyEmailPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
   const [status, setStatus] = useState<Status>('verifying');
-  const { markEmailVerified } = useAuth();
+  const { markEmailVerified, isAuthenticated } = useAuth();
+  const navigate = useNavigate();
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -24,11 +26,23 @@ export const VerifyEmailPage: React.FC = () => {
         if (res.success) {
           markEmailVerified();
           setStatus('success');
+          // Capture destination now, before the 2 s delay, so we aren't relying
+          // on a stale closure captured at effect-creation time.
+          const destination = isAuthenticated ? '/dashboard' : '/login';
+          redirectTimerRef.current = setTimeout(() => {
+            navigate(destination, { replace: true });
+          }, 2000);
         } else {
           setStatus('error');
         }
       })
       .catch(() => setStatus('error'));
+
+    return () => {
+      if (redirectTimerRef.current !== null) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
@@ -47,12 +61,7 @@ export const VerifyEmailPage: React.FC = () => {
             <div className="text-green-500 text-5xl">✓</div>
             <h2 className="text-2xl font-bold text-gray-900">Email Verified!</h2>
             <p className="text-gray-600">Your email has been verified successfully.</p>
-            <Link
-              to="/login"
-              className="inline-block mt-2 px-6 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors text-sm font-medium"
-            >
-              Sign in
-            </Link>
+            <p className="text-sm text-gray-400">Redirecting you now…</p>
           </>
         )}
 
