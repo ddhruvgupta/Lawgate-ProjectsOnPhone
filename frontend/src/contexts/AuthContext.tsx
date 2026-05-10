@@ -23,14 +23,25 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Sync auth state across tabs — when another tab calls markEmailVerified(),
   // logout(), or login(), the 'storage' event fires here and we re-read localStorage.
+  // We read both token and user atomically on any auth-key change to avoid a
+  // transient state where one is updated but the other still holds the old value,
+  // which could cause route-guard flicker.
   useEffect(() => {
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'user') {
-        setUser(e.newValue ? (JSON.parse(e.newValue) as User) : null);
+      if (e.key !== 'user' && e.key !== 'token') return;
+      const storedToken = localStorage.getItem('token');
+      const storedUserRaw = localStorage.getItem('user');
+      let parsedUser: User | null = null;
+      if (storedUserRaw) {
+        try {
+          parsedUser = JSON.parse(storedUserRaw) as User;
+        } catch {
+          // Corrupted value — treat as logged-out
+          parsedUser = null;
+        }
       }
-      if (e.key === 'token') {
-        setToken(e.newValue);
-      }
+      setToken(storedToken);
+      setUser(parsedUser);
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);

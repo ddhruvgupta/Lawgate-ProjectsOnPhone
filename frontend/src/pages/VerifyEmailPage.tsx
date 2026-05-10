@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { apiService } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,7 @@ export const VerifyEmailPage: React.FC = () => {
   const [status, setStatus] = useState<Status>('verifying');
   const { markEmailVerified, isAuthenticated } = useAuth();
   const navigate = useNavigate();
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!token) {
@@ -25,17 +26,23 @@ export const VerifyEmailPage: React.FC = () => {
         if (res.success) {
           markEmailVerified();
           setStatus('success');
-          // Redirect after a brief pause so the user sees the confirmation.
-          // Authenticated users go to the dashboard (which will now show verified);
-          // unauthenticated users go to login.
-          setTimeout(() => {
-            navigate(isAuthenticated ? '/dashboard' : '/login', { replace: true });
+          // Capture destination now, before the 2 s delay, so we aren't relying
+          // on a stale closure captured at effect-creation time.
+          const destination = isAuthenticated ? '/dashboard' : '/login';
+          redirectTimerRef.current = setTimeout(() => {
+            navigate(destination, { replace: true });
           }, 2000);
         } else {
           setStatus('error');
         }
       })
       .catch(() => setStatus('error'));
+
+    return () => {
+      if (redirectTimerRef.current !== null) {
+        clearTimeout(redirectTimerRef.current);
+      }
+    };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
