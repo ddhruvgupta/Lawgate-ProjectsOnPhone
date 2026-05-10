@@ -57,6 +57,7 @@ export interface Document {
   uploadedBy: string;
   createdAt: string;
   downloadUrl?: string;
+  tags?: string[];
 }
 
 export interface UploadDocumentRequest {
@@ -66,6 +67,7 @@ export interface UploadDocumentRequest {
   documentType: number;
   description?: string;
   contentType: string;
+  tags?: string[];
 }
 
 export interface UploadUrlResponse {

@@ -82,7 +82,7 @@ function App() {
                             </RoleGuard>
                           } />
                           <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+                          <Route path="*" element={<NotFoundPage />} />
                         </Routes>
                       </ErrorBoundary>
                     </Layout>

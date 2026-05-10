@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, type Resolver } from 'react-hook-form';
@@ -22,6 +22,11 @@ import {
   CalendarIcon,
   UserIcon,
   HashtagIcon,
+  EyeIcon,
+  ArrowTopRightOnSquareIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  TagIcon,
 } from '@heroicons/react/24/outline';
 
 const schema = z.object({
@@ -79,9 +84,15 @@ export const ProjectDetailPage: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [viewDoc, setViewDoc] = useState<{ url: string; fileName: string } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [docSortBy, setDocSortBy] = useState<'name' | 'type' | 'date' | 'size'>('date');
+  const [docSortDir, setDocSortDir] = useState<'asc' | 'desc'>('desc');
+  const [docTags, setDocTags] = useState<string[]>([]);
+  const [tagInputValue, setTagInputValue] = useState('');
   const projectId = Number(id);
 
   const { data: project, isLoading: projectLoading } = useQuery({
@@ -95,6 +106,21 @@ export const ProjectDetailPage: React.FC = () => {
     queryFn: () => apiService.getProjectDocuments(projectId),
     enabled: !!projectId,
   });
+
+  const sortedDocs = useMemo(() => {
+    const arr = [...documents];
+    arr.sort((a, b) => {
+      let cmp = 0;
+      switch (docSortBy) {
+        case 'name': cmp = a.fileName.localeCompare(b.fileName); break;
+        case 'type': cmp = a.documentType.localeCompare(b.documentType); break;
+        case 'date': cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(); break;
+        case 'size': cmp = a.fileSizeBytes - b.fileSizeBytes; break;
+      }
+      return docSortDir === 'asc' ? cmp : -cmp;
+    });
+    return arr;
+  }, [documents, docSortBy, docSortDir]);
 
   const updateMutation = useMutation({
     mutationFn: (data: UpdateProjectRequest) => apiService.updateProject(projectId, data),
@@ -158,6 +184,9 @@ export const ProjectDetailPage: React.FC = () => {
   const openUploadModal = () => {
     setSelectedFile(null);
     setFileError(null);
+    setDocTags([]);
+    setTagInputValue('');
+    setUploadProgress(0);
     resetUpload();
     setUploadOpen(true);
   };
@@ -169,6 +198,7 @@ export const ProjectDetailPage: React.FC = () => {
     }
 
     setIsUploading(true);
+    setUploadProgress(0);
     try {
       // Step 1: Get SAS upload URL from backend
       const uploadRequest: UploadDocumentRequest = {
@@ -178,33 +208,38 @@ export const ProjectDetailPage: React.FC = () => {
         documentType: values.documentType,
         description: values.description || undefined,
         contentType: selectedFile.type || 'application/octet-stream',
+        tags: docTags.length > 0 ? docTags : undefined,
       };
-      console.log('[Upload] Step 1 — requesting SAS URL', uploadRequest);
       const { documentId, uploadUrl } = await apiService.generateUploadUrl(uploadRequest);
-      console.log('[Upload] Step 1 — SAS URL received', { documentId, uploadUrl });
+      setUploadProgress(5);
 
-      // Step 2: PUT the file directly to Azure Blob Storage via SAS URL (no auth header)
-      console.log('[Upload] Step 2 — PUT to blob storage', uploadUrl);
-      const putResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: {
-          'x-ms-blob-type': 'BlockBlob',
-          'Content-Type': selectedFile.type || 'application/octet-stream',
-        },
-        body: selectedFile,
+      // Step 2: PUT directly to Azure Blob Storage via XHR for progress tracking
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('PUT', uploadUrl);
+        xhr.setRequestHeader('x-ms-blob-type', 'BlockBlob');
+        xhr.setRequestHeader('Content-Type', selectedFile.type || 'application/octet-stream');
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            // Map upload byte progress to 5–90% of the overall progress
+            setUploadProgress(5 + Math.round((e.loaded / e.total) * 85));
+          }
+        };
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload to storage failed: ${xhr.status}`));
+          }
+        };
+        xhr.onerror = () => reject(new Error('Network error during upload'));
+        xhr.send(selectedFile);
       });
-      console.log('[Upload] Step 2 — PUT response', putResponse.status, putResponse.statusText);
-
-      if (!putResponse.ok) {
-        const body = await putResponse.text().catch(() => '(unreadable)');
-        console.error('[Upload] Step 2 — PUT failed', { status: putResponse.status, body });
-        throw new Error(`Upload to storage failed: ${putResponse.status} — ${body}`);
-      }
+      setUploadProgress(90);
 
       // Step 3: Confirm upload with backend
-      console.log('[Upload] Step 3 — confirming upload with backend', documentId);
       await apiService.confirmUpload(documentId);
-      console.log('[Upload] Step 3 — confirmed');
+      setUploadProgress(100);
 
       queryClient.invalidateQueries({ queryKey: ['documents', projectId] });
       queryClient.invalidateQueries({ queryKey: ['projects'] });
@@ -215,6 +250,7 @@ export const ProjectDetailPage: React.FC = () => {
       showToast('Upload failed. Please try again.', 'error');
     } finally {
       setIsUploading(false);
+      setUploadProgress(0);
     }
   };
 
@@ -249,6 +285,21 @@ export const ProjectDetailPage: React.FC = () => {
       a.click();
     } catch {
       showToast('Failed to get download link', 'error');
+    }
+  };
+
+  const handleView = async (docId: number, fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+    try {
+      const url = await apiService.getDownloadUrl(docId);
+      if (ext === 'pdf') {
+        setViewDoc({ url, fileName });
+      } else {
+        // Non-PDF: open in new tab
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      showToast('Failed to get preview link', 'error');
     }
   };
 
@@ -374,6 +425,39 @@ export const ProjectDetailPage: React.FC = () => {
           )}
         </div>
 
+        {/* Sort controls */}
+        {documents.length > 1 && (
+          <div className="flex items-center gap-1.5 px-6 py-2.5 border-b border-gray-100 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/60">
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium mr-1">Sort:</span>
+            {(['name', 'type', 'date', 'size'] as const).map((field) => (
+              <button
+                key={field}
+                onClick={() => {
+                  if (docSortBy === field) {
+                    setDocSortDir(d => d === 'asc' ? 'desc' : 'asc');
+                  } else {
+                    setDocSortBy(field);
+                    setDocSortDir('asc');
+                  }
+                }}
+                aria-pressed={docSortBy === field}
+                className={`inline-flex items-center gap-0.5 px-2.5 py-1 text-xs rounded-md transition-colors ${
+                  docSortBy === field
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300 font-medium'
+                    : 'text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+              >
+                {field === 'name' ? 'Name' : field === 'type' ? 'Type' : field === 'date' ? 'Date' : 'Size'}
+                {docSortBy === field && (
+                  docSortDir === 'asc'
+                    ? <ChevronUpIcon className="w-3 h-3" />
+                    : <ChevronDownIcon className="w-3 h-3" />
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {docsLoading ? (
           <div className="p-6 space-y-3">
             {[1, 2, 3].map((i) => (
@@ -388,9 +472,9 @@ export const ProjectDetailPage: React.FC = () => {
           </div>
         ) : (
           <ul className="divide-y divide-gray-100 dark:divide-gray-700">
-            {documents.map((doc) => (
-              <li key={doc.id} className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
-                <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0">
+            {sortedDocs.map((doc) => (
+              <li key={doc.id} className="flex items-start gap-4 px-6 py-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                <div className="w-9 h-9 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center flex-shrink-0 mt-0.5">
                   <DocumentIcon className="w-5 h-5 text-gray-500 dark:text-gray-400" />
                 </div>
                 <div className="flex-1 min-w-0">
@@ -398,9 +482,28 @@ export const ProjectDetailPage: React.FC = () => {
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
                     {formatBytes(doc.fileSizeBytes)} &middot; v{doc.version} &middot; {doc.documentType} &middot; {doc.uploadedBy}
                   </p>
+                  {doc.tags && doc.tags.length > 0 && (
+                    <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                      <TagIcon className="w-3 h-3 text-gray-400 dark:text-gray-500 flex-shrink-0" />
+                      {doc.tags.map((tag) => (
+                        <span key={tag} className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 text-xs rounded">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <span className="text-xs text-gray-400 dark:text-gray-500 mr-2">{formatDate(doc.createdAt)}</span>
+                  <button
+                    onClick={() => handleView(doc.id, doc.fileName)}
+                    className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                    title={doc.fileName.toLowerCase().endsWith('.pdf') ? 'View PDF' : 'Open in new tab'}
+                  >
+                    {doc.fileName.toLowerCase().endsWith('.pdf')
+                      ? <EyeIcon className="w-4 h-4" />
+                      : <ArrowTopRightOnSquareIcon className="w-4 h-4" />}
+                  </button>
                   <button
                     onClick={() => handleDownload(doc.id, doc.fileName)}
                     className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
@@ -426,14 +529,14 @@ export const ProjectDetailPage: React.FC = () => {
       <Dialog open={editOpen} onClose={() => setEditOpen(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
               <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">Edit Project</DialogTitle>
               <button onClick={() => setEditOpen(false)} className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Project Name <span className="text-red-500">*</span></label>
                 <input {...register('name')} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500" />
@@ -477,14 +580,14 @@ export const ProjectDetailPage: React.FC = () => {
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Description</label>
                 <textarea {...register('description')} rows={3} className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none" />
               </div>
-              <div className="flex justify-end gap-3 pt-2">
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
                 <button type="button" onClick={() => setEditOpen(false)} className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600">
                   Cancel
                 </button>
                 <button type="button" onClick={handleSubmit((v) => updateMutation.mutate({ name: v.name, description: v.description, status: v.status, clientName: v.clientName || undefined, caseNumber: v.caseNumber || undefined, startDate: v.startDate || undefined, endDate: v.endDate || undefined }))} disabled={updateMutation.isPending} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50">
                   {updateMutation.isPending ? 'Saving…' : 'Save Changes'}
                 </button>
-              </div>
             </div>
           </DialogPanel>
         </div>
@@ -519,8 +622,8 @@ export const ProjectDetailPage: React.FC = () => {
       <Dialog open={uploadOpen} onClose={() => !isUploading && setUploadOpen(false)} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
               <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">Upload Document</DialogTitle>
               <button
                 onClick={() => setUploadOpen(false)}
@@ -531,8 +634,8 @@ export const ProjectDetailPage: React.FC = () => {
                 <XMarkIcon className="w-5 h-5" />
               </button>
             </div>
-            <form onSubmit={handleUploadSubmit(handleUpload)} noValidate>
-              <div className="p-6 space-y-4">
+            <form onSubmit={handleUploadSubmit(handleUpload)} noValidate className="flex flex-col min-h-0">
+              <div className="p-6 space-y-4 overflow-y-auto">
                 {/* File input */}
                 <div>
                   <label htmlFor="upload-file" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -595,9 +698,74 @@ export const ProjectDetailPage: React.FC = () => {
                     <p role="alert" className="mt-1 text-xs text-red-500">{uploadErrors.description.message}</p>
                   )}
                 </div>
+
+                {/* Tags */}
+                <div>
+                  <label htmlFor="upload-tags" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Tags <span className="text-xs text-gray-400 dark:text-gray-500 font-normal">(optional)</span>
+                  </label>
+                  {docTags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mb-2">
+                      {docTags.map((tag) => (
+                        <span key={tag} className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs rounded-full border border-blue-200 dark:border-blue-700">
+                          {tag}
+                          <button
+                            type="button"
+                            onClick={() => setDocTags(prev => prev.filter(t => t !== tag))}
+                            className="text-blue-500 hover:text-blue-700 dark:hover:text-blue-200"
+                            aria-label={`Remove tag ${tag}`}
+                          >
+                            <XMarkIcon className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  <input
+                    id="upload-tags"
+                    type="text"
+                    value={tagInputValue}
+                    onChange={(e) => setTagInputValue(e.target.value.slice(0, 50))}
+                    onKeyDown={(e) => {
+                      if ((e.key === 'Enter' || e.key === ',') && tagInputValue.trim()) {
+                        e.preventDefault();
+                        const newTag = tagInputValue.trim().toLowerCase()
+                          .replace(/,/g, '')
+                          .replace(/[<>"'&]/g, '')
+                          .slice(0, 50);
+                        if (newTag && !docTags.includes(newTag) && docTags.length < 10) {
+                          setDocTags(prev => [...prev, newTag]);
+                        }
+                        setTagInputValue('');
+                      } else if (e.key === 'Backspace' && !tagInputValue && docTags.length > 0) {
+                        setDocTags(prev => prev.slice(0, -1));
+                      }
+                    }}
+                    disabled={isUploading}
+                    placeholder="Type a tag and press Enter…"
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
+                  />
+                  <p className="mt-1 text-xs text-gray-400 dark:text-gray-500">Press Enter or comma to add a tag. Max 10 tags.</p>
+                </div>
               </div>
 
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700">
+              {/* Upload progress */}
+              {isUploading && (
+                <div className="px-6 pb-2 flex-shrink-0">
+                  <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-1">
+                    <span>Uploading…</span>
+                    <span>{uploadProgress}%</span>
+                  </div>
+                  <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 rounded-full transition-all duration-200"
+                      style={{ width: `${uploadProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => setUploadOpen(false)}
@@ -626,6 +794,44 @@ export const ProjectDetailPage: React.FC = () => {
               </div>
             </form>
           </DialogPanel>
+        </div>
+      </Dialog>
+
+      {/* PDF / Document Viewer Modal */}
+      <Dialog open={viewDoc !== null} onClose={() => setViewDoc(null)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
+        <div className="fixed inset-0 flex flex-col">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between bg-gray-900 text-white px-4 py-2 flex-shrink-0">
+            <span className="text-sm font-medium truncate max-w-lg">{viewDoc?.fileName}</span>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+              <a
+                href={viewDoc?.url ?? '#'}
+                download={viewDoc?.fileName}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                aria-label="Download"
+              >
+                <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Download
+              </a>
+              <button
+                onClick={() => setViewDoc(null)}
+                aria-label="Close viewer"
+                className="p-1.5 rounded-md hover:bg-gray-700 transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          {/* Iframe */}
+          <div className="flex-1 bg-gray-800">
+            {viewDoc && (
+              <iframe
+                src={viewDoc.url}
+                title={viewDoc.fileName}
+                className="w-full h-full border-0"
+              />
+            )}
+          </div>
         </div>
       </Dialog>
     </div>

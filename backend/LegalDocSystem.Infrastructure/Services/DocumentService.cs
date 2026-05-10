@@ -84,7 +84,16 @@ namespace LegalDocSystem.Infrastructure.Services
                 FileSizeBytes = dto.FileSizeBytes, // Expected size
                 DocumentType = dto.DocumentType,
                 Description = dto.Description,
-                Tags = dto.Tags,
+                Tags = dto.Tags != null && dto.Tags.Count > 0
+                    ? System.Text.Json.JsonSerializer.Serialize(
+                        dto.Tags
+                            .Take(10)
+                            .Select(t => System.Text.RegularExpressions.Regex.Replace(t.Trim(), @"[<>""'&]", ""))
+                            .Where(t => t.Length > 0)
+                            .Select(t => t.Length > 50 ? t[..50] : t)
+                            .Distinct(StringComparer.OrdinalIgnoreCase)
+                            .ToList())
+                    : null,
                 BlobContainerName = containerName,
                 BlobStoragePath = blobName,
                 Status = DocumentStatus.Pending,
@@ -229,6 +238,19 @@ namespace LegalDocSystem.Infrastructure.Services
 
         private static DocumentDto MapToDto(Document doc, string uploaderName)
         {
+            List<string> tags = new();
+            if (!string.IsNullOrEmpty(doc.Tags))
+            {
+                try { tags = System.Text.Json.JsonSerializer.Deserialize<List<string>>(doc.Tags) ?? new(); }
+                catch
+                {
+                    // Backward-compat: legacy comma-separated format
+                    tags = doc.Tags
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .ToList();
+                }
+            }
+
             return new DocumentDto
             {
                 Id = doc.Id,
@@ -241,7 +263,8 @@ namespace LegalDocSystem.Infrastructure.Services
                 Version = doc.Version,
                 IsLatestVersion = doc.IsLatestVersion,
                 UploadedBy = uploaderName,
-                CreatedAt = doc.CreatedAt
+                CreatedAt = doc.CreatedAt,
+                Tags = tags,
             };
         }
     }
