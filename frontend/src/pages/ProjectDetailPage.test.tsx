@@ -250,19 +250,29 @@ describe('ProjectDetailPage', () => {
     mockApiService.confirmUpload.mockResolvedValue(sampleDocument)
 
     // Mock XMLHttpRequest for the blob PUT (status 201 → onload resolves)
-    let capturedXhr: any = null
-    const MockXHR = vi.fn().mockImplementation(function (this: any) {
-      this.status = 201
-      this.upload = { onprogress: null }
-      this.onload = null
-      this.onerror = null
-      this.open = vi.fn()
-      this.setRequestHeader = vi.fn()
-      this.send = vi.fn().mockImplementation(() => {
-        setTimeout(() => { if (this.onload) this.onload() }, 0)
-      })
-      capturedXhr = this
+    interface MockXhrInstance {
+      status: number
+      upload: { onprogress: null }
+      onload: (() => void) | null
+      onerror: (() => void) | null
+      open: ReturnType<typeof vi.fn>
+      setRequestHeader: ReturnType<typeof vi.fn>
+      send: ReturnType<typeof vi.fn>
+    }
+    const xhrInstance: MockXhrInstance = {
+      status: 201,
+      upload: { onprogress: null },
+      onload: null,
+      onerror: null,
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+    }
+    xhrInstance.send = vi.fn().mockImplementation(() => {
+      setTimeout(() => { if (xhrInstance.onload) xhrInstance.onload() }, 0)
     })
+    const capturedXhr = xhrInstance
+    const MockXHR = vi.fn().mockImplementation(() => xhrInstance)
     vi.stubGlobal('XMLHttpRequest', MockXHR)
 
     renderPage()
@@ -331,17 +341,28 @@ describe('ProjectDetailPage', () => {
     mockApiService.generateUploadUrl.mockResolvedValue(uploadUrlResponse)
 
     // Mock XMLHttpRequest that returns 403 → onload rejects
-    const MockXHR = vi.fn().mockImplementation(function (this: any) {
-      this.status = 403
-      this.upload = { onprogress: null }
-      this.onload = null
-      this.onerror = null
-      this.open = vi.fn()
-      this.setRequestHeader = vi.fn()
-      this.send = vi.fn().mockImplementation(() => {
-        setTimeout(() => { if (this.onload) this.onload() }, 0)
-      })
+    interface MockXhrInstance403 {
+      status: number
+      upload: { onprogress: null }
+      onload: (() => void) | null
+      onerror: (() => void) | null
+      open: ReturnType<typeof vi.fn>
+      setRequestHeader: ReturnType<typeof vi.fn>
+      send: ReturnType<typeof vi.fn>
+    }
+    const xhrInstance403: MockXhrInstance403 = {
+      status: 403,
+      upload: { onprogress: null },
+      onload: null,
+      onerror: null,
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+    }
+    xhrInstance403.send = vi.fn().mockImplementation(() => {
+      setTimeout(() => { if (xhrInstance403.onload) xhrInstance403.onload() }, 0)
     })
+    const MockXHR = vi.fn().mockImplementation(() => xhrInstance403)
     vi.stubGlobal('XMLHttpRequest', MockXHR)
 
     renderPage()
