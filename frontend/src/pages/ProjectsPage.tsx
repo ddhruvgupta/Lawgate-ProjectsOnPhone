@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, type Resolver } from 'react-hook-form';
@@ -345,146 +345,8 @@ export const ProjectsPage: React.FC = () => {
                       <span className="font-medium text-gray-900 dark:text-white truncate">{project.name}</span>
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{project.clientName ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{project.caseNumber ?? '—'}</td>
-                  <td className="px-4 py-3"><ProjectStatusBadge status={project.status} /></td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden lg:table-cell">{project.documentCount}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden xl:table-cell">{formatDate(project.createdAt)}</td>
-                  <td className="px-4 py-3">
-                    <button
-                      onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
-                      aria-label={`Delete ${project.name}`}
-                      title="Delete project"
-                      className="p-1.5 rounded-md text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-                    >
-                      <TrashIcon className="w-4 h-4" />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-
-      {/* Delete project confirmation */}
-      <Dialog open={deleteTarget !== null} onClose={() => setDeleteTarget(null)} className="relative z-50">
-        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-        <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
-            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white mb-2">
-              Delete Project
-            </DialogTitle>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-              Are you sure you want to delete <strong className="text-gray-900 dark:text-white">{deleteTarget?.name}</strong>?
-              This will also delete all associated documents. This cannot be undone.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
-                disabled={deleteMutation.isPending}
-                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
-              >
-                {deleteMutation.isPending ? 'Deleting…' : 'Delete Project'}
-              </button>
-            </div>
-          </DialogPanel>
-        </div>
-      </Dialog></div>
-      ) : viewMode === 'card' ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {sorted.map((project) => (
-            <div key={project.id} className="relative group">
-              <Link
-                to={`/projects/${project.id}`}
-                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all group flex flex-col gap-3 block"
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                      <FolderIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                    </div>
-                    <h3 className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                      {project.name}
-                    </h3>
-                  </div>
-                  <ProjectStatusBadge status={project.status} />
-                </div>
-
-                {project.description && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
-                )}
-
-                <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
-                  {project.clientName && (
-                    <div className="flex justify-between">
-                      <span>Client</span>
-                      <span className="font-medium text-gray-700 dark:text-gray-300">{project.clientName}</span>
-                    </div>
-                  )}
-                  {project.caseNumber && (
-                    <div className="flex justify-between">
-                      <span>Case #</span>
-                      <span className="font-medium text-gray-700 dark:text-gray-300">{project.caseNumber}</span>
-                    </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="flex items-center gap-1">
-                      <DocumentIcon className="w-3.5 h-3.5" /> Documents
-                    </span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{project.documentCount}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span>Created</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{formatDate(project.createdAt)}</span>
-                  </div>
-                </div>
-              </Link>
-              <button
-                onClick={(e) => { e.preventDefault(); setDeleteTarget({ id: project.id, name: project.name }); }}
-                aria-label={`Delete ${project.name}`}
-                title="Delete project"
-                className="absolute top-3 right-3 p-1.5 rounded-md text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
-              >
-                <TrashIcon className="w-4 h-4" />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : (
-        /* List view */
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 dark:border-gray-700 text-left text-xs text-gray-500 dark:text-gray-400">
-                <th className="px-4 py-3 font-medium">Project</th>
-                <th className="px-4 py-3 font-medium hidden sm:table-cell">Client</th>
-                <th className="px-4 py-3 font-medium hidden md:table-cell">Case #</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium hidden lg:table-cell">Docs</th>
-                <th className="px-4 py-3 font-medium hidden xl:table-cell">Created</th>
-                <th className="px-4 py-3 font-medium w-10"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
-              {sorted.map((project) => (
-                <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 group transition-colors">
-                  <td className="px-4 py-3">
-                    <Link to={`/projects/${project.id}`} className="flex items-center gap-3 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
-                      <div className="w-7 h-7 rounded-md bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                        <FolderIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <span className="font-medium text-gray-900 dark:text-white truncate">{project.name}</span>
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{project.clientName ?? '—'}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{project.caseNumber ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{project.clientName ?? 'â€”'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{project.caseNumber ?? 'â€”'}</td>
                   <td className="px-4 py-3"><ProjectStatusBadge status={project.status} /></td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden lg:table-cell">{project.documentCount}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden xl:table-cell">{formatDate(project.createdAt)}</td>
@@ -535,7 +397,6 @@ export const ProjectsPage: React.FC = () => {
           </DialogPanel>
         </div>
       </Dialog>
-
       {/* Create Project Modal */}
       <Dialog open={modalOpen} onClose={() => { setModalOpen(false); reset(); }} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />

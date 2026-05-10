@@ -22,6 +22,8 @@ import {
   CalendarIcon,
   UserIcon,
   HashtagIcon,
+  EyeIcon,
+  ArrowTopRightOnSquareIcon,
 } from '@heroicons/react/24/outline';
 
 const schema = z.object({
@@ -79,6 +81,7 @@ export const ProjectDetailPage: React.FC = () => {
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [uploadOpen, setUploadOpen] = useState(false);
+  const [viewDoc, setViewDoc] = useState<{ url: string; fileName: string } | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -252,6 +255,21 @@ export const ProjectDetailPage: React.FC = () => {
     }
   };
 
+  const handleView = async (docId: number, fileName: string) => {
+    const ext = fileName.split('.').pop()?.toLowerCase() ?? '';
+    try {
+      const url = await apiService.getDownloadUrl(docId);
+      if (ext === 'pdf') {
+        setViewDoc({ url, fileName });
+      } else {
+        // Non-PDF: open in new tab
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
+    } catch {
+      showToast('Failed to get preview link', 'error');
+    }
+  };
+
   if (projectLoading) {
     return (
       <div className="p-8 max-w-5xl mx-auto space-y-4">
@@ -401,6 +419,15 @@ export const ProjectDetailPage: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <span className="text-xs text-gray-400 dark:text-gray-500 mr-2">{formatDate(doc.createdAt)}</span>
+                  <button
+                    onClick={() => handleView(doc.id, doc.fileName)}
+                    className="p-1.5 text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors"
+                    title={doc.fileName.toLowerCase().endsWith('.pdf') ? 'View PDF' : 'Open in new tab'}
+                  >
+                    {doc.fileName.toLowerCase().endsWith('.pdf')
+                      ? <EyeIcon className="w-4 h-4" />
+                      : <ArrowTopRightOnSquareIcon className="w-4 h-4" />}
+                  </button>
                   <button
                     onClick={() => handleDownload(doc.id, doc.fileName)}
                     className="p-1.5 text-gray-400 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors"
@@ -626,6 +653,44 @@ export const ProjectDetailPage: React.FC = () => {
               </div>
             </form>
           </DialogPanel>
+        </div>
+      </Dialog>
+
+      {/* PDF / Document Viewer Modal */}
+      <Dialog open={viewDoc !== null} onClose={() => setViewDoc(null)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/60" aria-hidden="true" />
+        <div className="fixed inset-0 flex flex-col">
+          {/* Toolbar */}
+          <div className="flex items-center justify-between bg-gray-900 text-white px-4 py-2 flex-shrink-0">
+            <span className="text-sm font-medium truncate max-w-lg">{viewDoc?.fileName}</span>
+            <div className="flex items-center gap-2 flex-shrink-0 ml-4">
+              <a
+                href={viewDoc?.url ?? '#'}
+                download={viewDoc?.fileName}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors"
+                aria-label="Download"
+              >
+                <ArrowDownTrayIcon className="w-3.5 h-3.5" /> Download
+              </a>
+              <button
+                onClick={() => setViewDoc(null)}
+                aria-label="Close viewer"
+                className="p-1.5 rounded-md hover:bg-gray-700 transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+          {/* Iframe */}
+          <div className="flex-1 bg-gray-800">
+            {viewDoc && (
+              <iframe
+                src={viewDoc.url}
+                title={viewDoc.fileName}
+                className="w-full h-full border-0"
+              />
+            )}
+          </div>
         </div>
       </Dialog>
     </div>
