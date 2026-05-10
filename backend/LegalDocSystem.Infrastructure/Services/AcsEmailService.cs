@@ -73,7 +73,7 @@ public class AcsEmailService : IEmailService
         await SendAsync(toEmail, firstName, subject, htmlBody);
     }
 
-    public async Task SendTeamInviteEmailAsync(string toEmail, string firstName, string invitedByName, string companyName, string loginUrl, string temporaryPassword)
+    public async Task SendTeamInviteEmailAsync(string toEmail, string firstName, string invitedByName, string companyName, string verificationUrl, string temporaryPassword)
     {
         var subject = $"You've been added to {companyName} on Lawgate";
         var htmlBody = EmailTemplateLoader.Load("team-invite.html", new()
@@ -83,7 +83,7 @@ public class AcsEmailService : IEmailService
             ["invitedByName"]     = EscapeHtml(invitedByName),
             ["email"]             = EscapeHtml(toEmail),
             ["temporaryPassword"] = EscapeHtml(temporaryPassword),
-            ["loginUrl"]          = loginUrl,
+            ["verificationUrl"]   = verificationUrl,
         });
 
         await SendAsync(toEmail, firstName, subject, htmlBody);

@@ -141,6 +141,58 @@ public class UserServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task CreateUserAsync_SetsIsEmailVerifiedFalse_AndStoresVerificationToken()
+    {
+        // Invited users start unverified; clicking the invite email button verifies them.
+        var company = CreateAndSaveCompany();
+        var dto = new CreateUserDto
+        {
+            FirstName = "Invited",
+            LastName = "User",
+            Email = "invited@test.com",
+            Password = "Test@1234",
+            Role = UserRole.User
+        };
+
+        await _sut.CreateUserAsync(company.Id, dto, "admin@test.com");
+
+        var saved = await _context.Users.FirstAsync(u => u.Email == "invited@test.com");
+        saved.IsEmailVerified.Should().BeFalse();
+        saved.EmailVerificationToken.Should().NotBeNullOrEmpty();
+        saved.EmailVerificationTokenExpiry.Should().BeAfter(DateTime.UtcNow);
+    }
+
+    [Fact]
+    public async Task CreateUserAsync_SendsInviteEmailWithVerificationUrl()
+    {
+        // The invite email button must point to /verify-email?token=... not /login.
+        var emailService = Substitute.For<IEmailService>();
+        var configuration = Substitute.For<IConfiguration>();
+        configuration["FrontendBaseUrl"].Returns("https://app.example.com");
+        var sut = new UserService(_context, emailService, configuration, NullLogger<UserService>.Instance);
+
+        var company = CreateAndSaveCompany("verifyme@test.com");
+        var dto = new CreateUserDto
+        {
+            FirstName = "Verify",
+            LastName = "Me",
+            Email = "verifylink@test.com",
+            Password = "Test@1234",
+            Role = UserRole.User
+        };
+
+        await sut.CreateUserAsync(company.Id, dto, "admin@test.com");
+
+        await emailService.Received(1).SendTeamInviteEmailAsync(
+            toEmail: "verifylink@test.com",
+            firstName: "Verify",
+            invitedByName: "admin@test.com",
+            companyName: Arg.Any<string>(),
+            verificationUrl: Arg.Is<string>(url => url.Contains("/verify-email?token=")),
+            temporaryPassword: "Test@1234");
+    }
+
+    [Fact]
     public async Task ToggleUserStatusAsync_FlipsIsActiveCorrectly()
     {
         // Arrange

@@ -87,7 +87,7 @@ public class ConsoleEmailService : IEmailService
         return Task.CompletedTask;
     }
 
-    public Task SendTeamInviteEmailAsync(string toEmail, string firstName, string invitedByName, string companyName, string loginUrl, string temporaryPassword)
+    public Task SendTeamInviteEmailAsync(string toEmail, string firstName, string invitedByName, string companyName, string verificationUrl, string temporaryPassword)
     {
         var body = $"""
             ============================================================
@@ -103,7 +103,7 @@ public class ConsoleEmailService : IEmailService
               Email:             {toEmail}
               Temporary password: {temporaryPassword}
 
-            Log in here: {loginUrl}
+            Accept your invitation (verifies your email): {verificationUrl}
 
             Please change your password after your first sign-in.
             ============================================================
