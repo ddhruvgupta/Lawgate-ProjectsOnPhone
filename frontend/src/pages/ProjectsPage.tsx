@@ -401,8 +401,8 @@ export const ProjectsPage: React.FC = () => {
       <Dialog open={modalOpen} onClose={() => { setModalOpen(false); reset(); }} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
               <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">
                 New Project
               </DialogTitle>
@@ -411,7 +411,7 @@ export const ProjectsPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Project Name <span className="text-red-500">*</span>
@@ -491,6 +491,9 @@ export const ProjectsPage: React.FC = () => {
               </div>
 
               <div className="flex justify-end gap-3 pt-2">
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => { setModalOpen(false); reset(); }}
@@ -506,7 +509,6 @@ export const ProjectsPage: React.FC = () => {
                 >
                   {createMutation.isPending ? 'Creating…' : 'Create Project'}
                 </button>
-              </div>
             </div>
           </DialogPanel>
         </div>

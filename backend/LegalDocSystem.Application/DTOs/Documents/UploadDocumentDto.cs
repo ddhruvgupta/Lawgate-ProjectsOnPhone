@@ -21,5 +21,5 @@ public class UploadDocumentDto
 
     public string ContentType { get; set; } = "application/octet-stream";
 
-    public string? Tags { get; set; } // JSON array or comma separated
+    public List<string>? Tags { get; set; }
 }
