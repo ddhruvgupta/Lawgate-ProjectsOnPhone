@@ -1,7 +1,7 @@
 # SDET Test Results — Lawgate Production
 **Date:** 2026-05-09 (updated 2026-05-10 with new feature tests)  
 **Tester:** GitHub Copilot (SDET role)  
-**Test Account:** `sdet-test@lawgate-test.io` / `SdetTest@2026` (CompanyOwner, SDET Test Firm)  
+**Test Account:** `<redacted>` (CompanyOwner, SDET Test Firm — credentials stored in secret store, not in source)  
 **Frontend:** https://calm-field-02db0f300.7.azurestaticapps.net  
 **API:** https://lawgate-prod-api-dztku2.azurewebsites.net  
 **Commit tested:** `b5be75f` (fix: remove duplicate JSX in ProjectsPage; add PDF viewer)
@@ -71,7 +71,7 @@ Token lifetime = **1440 minutes (24 hours)**.
 
 **Observation:** Full user object stored in plaintext localStorage:
 ```json
-{"id":2,"companyId":2,"firstName":"SDET","lastName":"Tester","email":"sdet-test@lawgate-test.io","phone":"+1-555-9999","role":"CompanyOwner","companyName":"SDET Test Firm","isActive":true,"isEmailVerified":true}
+{"id":2,"companyId":2,"firstName":"<redacted>","lastName":"<redacted>","email":"<redacted>","phone":"<redacted>","role":"CompanyOwner","companyName":"SDET Test Firm","isActive":true,"isEmailVerified":true}
 ```
 **Risk:** PII (email, phone, name) unnecessarily persisted in localStorage — accessible to any JavaScript on the page.
 

@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useForm, type Resolver } from 'react-hook-form';
@@ -48,15 +48,18 @@ export const ProjectsPage: React.FC = () => {
   // BUG-010: initialise from URL so the modal is open on first render when ?new=1
   const [modalOpen, setModalOpen] = useState(() => searchParams.get('new') === '1');
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState<'card' | 'list'>(
-    () => (localStorage.getItem('lawgate-projects-view') as 'card' | 'list') ?? 'card'
-  );
-  const [sortBy, setSortBy] = useState<'name' | 'status' | 'createdAt'>(
-    () => (localStorage.getItem('lawgate-projects-sort') as 'name' | 'status' | 'createdAt') ?? 'createdAt'
-  );
-  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(
-    () => (localStorage.getItem('lawgate-projects-sort-dir') as 'asc' | 'desc') ?? 'desc'
-  );
+  const [viewMode, setViewMode] = useState<'card' | 'list'>(() => {
+    const v = localStorage.getItem('lawgate-projects-view');
+    return v === 'card' || v === 'list' ? v : 'card';
+  });
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'createdAt'>(() => {
+    const v = localStorage.getItem('lawgate-projects-sort');
+    return v === 'name' || v === 'status' || v === 'createdAt' ? v : 'createdAt';
+  });
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() => {
+    const v = localStorage.getItem('lawgate-projects-sort-dir');
+    return v === 'asc' || v === 'desc' ? v : 'desc';
+  });
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const { showToast } = useToast();
   const queryClient = useQueryClient();
@@ -345,8 +348,8 @@ export const ProjectsPage: React.FC = () => {
                       <span className="font-medium text-gray-900 dark:text-white truncate">{project.name}</span>
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{project.clientName ?? 'â€”'}</td>
-                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{project.caseNumber ?? 'â€”'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{project.clientName ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{project.caseNumber ?? '—'}</td>
                   <td className="px-4 py-3"><ProjectStatusBadge status={project.status} /></td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden lg:table-cell">{project.documentCount}</td>
                   <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden xl:table-cell">{formatDate(project.createdAt)}</td>
@@ -490,8 +493,6 @@ export const ProjectsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
-              </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
                 <button

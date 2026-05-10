@@ -725,11 +725,14 @@ export const ProjectDetailPage: React.FC = () => {
                     id="upload-tags"
                     type="text"
                     value={tagInputValue}
-                    onChange={(e) => setTagInputValue(e.target.value)}
+                    onChange={(e) => setTagInputValue(e.target.value.slice(0, 50))}
                     onKeyDown={(e) => {
                       if ((e.key === 'Enter' || e.key === ',') && tagInputValue.trim()) {
                         e.preventDefault();
-                        const newTag = tagInputValue.trim().toLowerCase().replace(/,/g, '');
+                        const newTag = tagInputValue.trim().toLowerCase()
+                          .replace(/,/g, '')
+                          .replace(/[<>"'&]/g, '')
+                          .slice(0, 50);
                         if (newTag && !docTags.includes(newTag) && docTags.length < 10) {
                           setDocTags(prev => [...prev, newTag]);
                         }
