@@ -16,4 +16,5 @@ public class DocumentDto
     public string UploadedBy { get; set; } = string.Empty; // User Name
     public DateTime CreatedAt { get; set; }
     public string? DownloadUrl { get; set; } // Generated SAS URL if needed
+    public List<string> Tags { get; set; } = new();
 }

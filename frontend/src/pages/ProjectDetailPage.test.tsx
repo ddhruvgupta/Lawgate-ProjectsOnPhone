@@ -239,7 +239,7 @@ describe('ProjectDetailPage', () => {
 
   // ── Successful upload flow ────────────────────────────────────────────────
 
-  it('calls generateUploadUrl, fetch, confirmUpload on successful upload', async () => {
+  it('calls generateUploadUrl, XHR PUT, confirmUpload on successful upload', async () => {
     const uploadUrlResponse: UploadUrlResponse = {
       documentId: 99,
       uploadUrl: 'https://fake.blob/upload?sas=token',
@@ -249,9 +249,31 @@ describe('ProjectDetailPage', () => {
     mockApiService.generateUploadUrl.mockResolvedValue(uploadUrlResponse)
     mockApiService.confirmUpload.mockResolvedValue(sampleDocument)
 
-    // Mock global fetch for the blob PUT
-    const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 201 })
-    vi.stubGlobal('fetch', mockFetch)
+    // Mock XMLHttpRequest for the blob PUT (status 201 → onload resolves)
+    interface MockXhrInstance {
+      status: number
+      upload: { onprogress: null }
+      onload: (() => void) | null
+      onerror: (() => void) | null
+      open: ReturnType<typeof vi.fn>
+      setRequestHeader: ReturnType<typeof vi.fn>
+      send: ReturnType<typeof vi.fn>
+    }
+    const xhrInstance: MockXhrInstance = {
+      status: 201,
+      upload: { onprogress: null },
+      onload: null,
+      onerror: null,
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+    }
+    xhrInstance.send = vi.fn().mockImplementation(() => {
+      setTimeout(() => { if (xhrInstance.onload) xhrInstance.onload() }, 0)
+    })
+    const capturedXhr = xhrInstance
+    const MockXHR = vi.fn().mockImplementation(() => xhrInstance)
+    vi.stubGlobal('XMLHttpRequest', MockXHR)
 
     renderPage()
     await waitForHeading()
@@ -276,10 +298,7 @@ describe('ProjectDetailPage', () => {
     })
 
     await waitFor(() => {
-      expect(mockFetch).toHaveBeenCalledWith(
-        uploadUrlResponse.uploadUrl,
-        expect.objectContaining({ method: 'PUT' })
-      )
+      expect(capturedXhr.open).toHaveBeenCalledWith('PUT', uploadUrlResponse.uploadUrl)
     })
 
     await waitFor(() => {
@@ -321,8 +340,30 @@ describe('ProjectDetailPage', () => {
     }
     mockApiService.generateUploadUrl.mockResolvedValue(uploadUrlResponse)
 
-    const mockFetch = vi.fn().mockResolvedValue({ ok: false, status: 403 })
-    vi.stubGlobal('fetch', mockFetch)
+    // Mock XMLHttpRequest that returns 403 → onload rejects
+    interface MockXhrInstance403 {
+      status: number
+      upload: { onprogress: null }
+      onload: (() => void) | null
+      onerror: (() => void) | null
+      open: ReturnType<typeof vi.fn>
+      setRequestHeader: ReturnType<typeof vi.fn>
+      send: ReturnType<typeof vi.fn>
+    }
+    const xhrInstance403: MockXhrInstance403 = {
+      status: 403,
+      upload: { onprogress: null },
+      onload: null,
+      onerror: null,
+      open: vi.fn(),
+      setRequestHeader: vi.fn(),
+      send: vi.fn(),
+    }
+    xhrInstance403.send = vi.fn().mockImplementation(() => {
+      setTimeout(() => { if (xhrInstance403.onload) xhrInstance403.onload() }, 0)
+    })
+    const MockXHR = vi.fn().mockImplementation(() => xhrInstance403)
+    vi.stubGlobal('XMLHttpRequest', MockXHR)
 
     renderPage()
     await waitForHeading()

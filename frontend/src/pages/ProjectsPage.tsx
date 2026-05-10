@@ -16,6 +16,11 @@ import {
   DocumentIcon,
   XMarkIcon,
   MagnifyingGlassIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
+  TrashIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
 } from '@heroicons/react/24/outline';
 
 const schema = z.object({
@@ -43,6 +48,19 @@ export const ProjectsPage: React.FC = () => {
   // BUG-010: initialise from URL so the modal is open on first render when ?new=1
   const [modalOpen, setModalOpen] = useState(() => searchParams.get('new') === '1');
   const [search, setSearch] = useState('');
+  const [viewMode, setViewMode] = useState<'card' | 'list'>(() => {
+    const v = localStorage.getItem('lawgate-projects-view');
+    return v === 'card' || v === 'list' ? v : 'card';
+  });
+  const [sortBy, setSortBy] = useState<'name' | 'status' | 'createdAt'>(() => {
+    const v = localStorage.getItem('lawgate-projects-sort');
+    return v === 'name' || v === 'status' || v === 'createdAt' ? v : 'createdAt';
+  });
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>(() => {
+    const v = localStorage.getItem('lawgate-projects-sort-dir');
+    return v === 'asc' || v === 'desc' ? v : 'desc';
+  });
+  const [deleteTarget, setDeleteTarget] = useState<{ id: number; name: string } | null>(null);
   const { showToast } = useToast();
   const queryClient = useQueryClient();
   const clearedRef = useRef(false);
@@ -72,6 +90,16 @@ export const ProjectsPage: React.FC = () => {
     onError: () => showToast('Failed to create project', 'error'),
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (id: number) => apiService.deleteProject(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      showToast('Project deleted', 'success');
+      setDeleteTarget(null);
+    },
+    onError: () => showToast('Failed to delete project', 'error'),
+  });
+
   const {
     register,
     handleSubmit,
@@ -96,6 +124,32 @@ export const ProjectsPage: React.FC = () => {
       (p.clientName ?? '').toLowerCase().includes(search.toLowerCase()) ||
       (p.caseNumber ?? '').toLowerCase().includes(search.toLowerCase())
   );
+
+  const sorted = [...filtered].sort((a, b) => {
+    let cmp = 0;
+    if (sortBy === 'name') cmp = a.name.localeCompare(b.name);
+    else if (sortBy === 'status') cmp = a.status.localeCompare(b.status);
+    else cmp = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return sortDir === 'asc' ? cmp : -cmp;
+  });
+
+  const handleViewMode = (mode: 'card' | 'list') => {
+    setViewMode(mode);
+    localStorage.setItem('lawgate-projects-view', mode);
+  };
+
+  const handleSort = (field: typeof sortBy) => {
+    if (field === sortBy) {
+      const newDir = sortDir === 'asc' ? 'desc' : 'asc';
+      setSortDir(newDir);
+      localStorage.setItem('lawgate-projects-sort-dir', newDir);
+    } else {
+      setSortBy(field);
+      setSortDir('asc');
+      localStorage.setItem('lawgate-projects-sort', field);
+      localStorage.setItem('lawgate-projects-sort-dir', 'asc');
+    }
+  };
 
   return (
     <div className="p-8 max-w-7xl mx-auto">
@@ -130,6 +184,58 @@ export const ProjectsPage: React.FC = () => {
         />
       </div>
 
+      {/* Controls row: sort + view toggle */}
+      <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-500 dark:text-gray-400 font-medium">Sort by</span>
+          {(['name', 'status', 'createdAt'] as const).map((field) => {
+            const labels: Record<string, string> = { name: 'Name', status: 'Status', createdAt: 'Date created' };
+            const active = sortBy === field;
+            return (
+              <button
+                key={field}
+                onClick={() => handleSort(field)}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  active
+                    ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-700 dark:text-blue-300'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                }`}
+                aria-pressed={active}
+              >
+                {labels[field]}
+                {active && (sortDir === 'asc' ? <ChevronUpIcon className="w-3 h-3" /> : <ChevronDownIcon className="w-3 h-3" />)}
+              </button>
+            );
+          })}
+        </div>
+        <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+          <button
+            onClick={() => handleViewMode('card')}
+            aria-label="Card view"
+            aria-pressed={viewMode === 'card'}
+            className={`p-1.5 rounded-md transition-colors ${
+              viewMode === 'card'
+                ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <Squares2X2Icon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={() => handleViewMode('list')}
+            aria-label="List view"
+            aria-pressed={viewMode === 'list'}
+            className={`p-1.5 rounded-md transition-colors ${
+              viewMode === 'list'
+                ? 'bg-white dark:bg-gray-600 text-blue-600 dark:text-blue-400 shadow-sm'
+                : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+            }`}
+          >
+            <ListBulletIcon className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
       {/* Content */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -137,7 +243,7 @@ export const ProjectsPage: React.FC = () => {
             <div key={i} className="h-48 bg-gray-100 dark:bg-gray-700 rounded-xl animate-pulse" />
           ))}
         </div>
-      ) : filtered.length === 0 ? (
+      ) : sorted.length === 0 ? (
         <div className="text-center py-20 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 border-dashed">
           <FolderIcon className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">
@@ -156,65 +262,150 @@ export const ProjectsPage: React.FC = () => {
             </button>
           )}
         </div>
-      ) : (
+      ) : viewMode === 'card' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {filtered.map((project) => (
-            <Link
-              key={project.id}
-              to={`/projects/${project.id}`}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all group flex flex-col gap-3"
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
-                    <FolderIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          {sorted.map((project) => (
+            <div key={project.id} className="relative group">
+              <Link
+                to={`/projects/${project.id}`}
+                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-5 hover:border-blue-300 dark:hover:border-blue-600 hover:shadow-sm transition-all group flex flex-col gap-3 block"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                      <FolderIcon className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                      {project.name}
+                    </h3>
                   </div>
-                  <h3 className="font-semibold text-gray-900 dark:text-white truncate group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                    {project.name}
-                  </h3>
+                  <ProjectStatusBadge status={project.status} />
                 </div>
-                <ProjectStatusBadge status={project.status} />
-              </div>
 
-              {project.description && (
-                <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
-              )}
+                {project.description && (
+                  <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">{project.description}</p>
+                )}
 
-              <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
-                {project.clientName && (
+                <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1 mt-auto pt-2 border-t border-gray-100 dark:border-gray-700">
+                  {project.clientName && (
+                    <div className="flex justify-between">
+                      <span>Client</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{project.clientName}</span>
+                    </div>
+                  )}
+                  {project.caseNumber && (
+                    <div className="flex justify-between">
+                      <span>Case #</span>
+                      <span className="font-medium text-gray-700 dark:text-gray-300">{project.caseNumber}</span>
+                    </div>
+                  )}
                   <div className="flex justify-between">
-                    <span>Client</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{project.clientName}</span>
+                    <span className="flex items-center gap-1">
+                      <DocumentIcon className="w-3.5 h-3.5" /> Documents
+                    </span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{project.documentCount}</span>
                   </div>
-                )}
-                {project.caseNumber && (
                   <div className="flex justify-between">
-                    <span>Case #</span>
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{project.caseNumber}</span>
+                    <span>Created</span>
+                    <span className="font-medium text-gray-700 dark:text-gray-300">{formatDate(project.createdAt)}</span>
                   </div>
-                )}
-                <div className="flex justify-between">
-                  <span className="flex items-center gap-1">
-                    <DocumentIcon className="w-3.5 h-3.5" /> Documents
-                  </span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">{project.documentCount}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span>Created</span>
-                  <span className="font-medium text-gray-700 dark:text-gray-300">{formatDate(project.createdAt)}</span>
-                </div>
-              </div>
-            </Link>
+              </Link>
+              <button
+                onClick={(e) => { e.preventDefault(); setDeleteTarget({ id: project.id, name: project.name }); }}
+                aria-label={`Delete ${project.name}`}
+                title="Delete project"
+                className="absolute top-3 right-3 p-1.5 rounded-md text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            </div>
           ))}
+        </div>
+      ) : (
+        /* List view */
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-100 dark:border-gray-700 text-left text-xs text-gray-500 dark:text-gray-400">
+                <th className="px-4 py-3 font-medium">Project</th>
+                <th className="px-4 py-3 font-medium hidden sm:table-cell">Client</th>
+                <th className="px-4 py-3 font-medium hidden md:table-cell">Case #</th>
+                <th className="px-4 py-3 font-medium">Status</th>
+                <th className="px-4 py-3 font-medium hidden lg:table-cell">Docs</th>
+                <th className="px-4 py-3 font-medium hidden xl:table-cell">Created</th>
+                <th className="px-4 py-3 font-medium w-10"></th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50 dark:divide-gray-700/50">
+              {sorted.map((project) => (
+                <tr key={project.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/30 group transition-colors">
+                  <td className="px-4 py-3">
+                    <Link to={`/projects/${project.id}`} className="flex items-center gap-3 min-w-0 hover:text-blue-600 dark:hover:text-blue-400 transition-colors">
+                      <div className="w-7 h-7 rounded-md bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center flex-shrink-0">
+                        <FolderIcon className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <span className="font-medium text-gray-900 dark:text-white truncate">{project.name}</span>
+                    </Link>
+                  </td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden sm:table-cell">{project.clientName ?? '—'}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden md:table-cell">{project.caseNumber ?? '—'}</td>
+                  <td className="px-4 py-3"><ProjectStatusBadge status={project.status} /></td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden lg:table-cell">{project.documentCount}</td>
+                  <td className="px-4 py-3 text-gray-500 dark:text-gray-400 hidden xl:table-cell">{formatDate(project.createdAt)}</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={() => setDeleteTarget({ id: project.id, name: project.name })}
+                      aria-label={`Delete ${project.name}`}
+                      title="Delete project"
+                      className="p-1.5 rounded-md text-gray-400 opacity-0 group-hover:opacity-100 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all"
+                    >
+                      <TrashIcon className="w-4 h-4" />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
+      {/* Delete project confirmation */}
+      <Dialog open={deleteTarget !== null} onClose={() => setDeleteTarget(null)} className="relative z-50">
+        <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
+        <div className="fixed inset-0 flex items-center justify-center p-4">
+          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-md p-6">
+            <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white mb-2">
+              Delete Project
+            </DialogTitle>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              Are you sure you want to delete <strong className="text-gray-900 dark:text-white">{deleteTarget?.name}</strong>?
+              This will also delete all associated documents. This cannot be undone.
+            </p>
+            <div className="flex justify-end gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => deleteTarget && deleteMutation.mutate(deleteTarget.id)}
+                disabled={deleteMutation.isPending}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 disabled:opacity-50"
+              >
+                {deleteMutation.isPending ? 'Deleting…' : 'Delete Project'}
+              </button>
+            </div>
+          </DialogPanel>
+        </div>
+      </Dialog>
       {/* Create Project Modal */}
       <Dialog open={modalOpen} onClose={() => { setModalOpen(false); reset(); }} className="relative z-50">
         <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
         <div className="fixed inset-0 flex items-center justify-center p-4">
-          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+          <DialogPanel className="bg-white dark:bg-gray-800 rounded-xl shadow-xl w-full max-w-lg flex flex-col max-h-[90vh]">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700 flex-shrink-0">
               <DialogTitle className="text-base font-semibold text-gray-900 dark:text-white">
                 New Project
               </DialogTitle>
@@ -223,7 +414,7 @@ export const ProjectsPage: React.FC = () => {
               </button>
             </div>
 
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-4 overflow-y-auto">
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Project Name <span className="text-red-500">*</span>
@@ -302,7 +493,8 @@ export const ProjectsPage: React.FC = () => {
                 />
               </div>
 
-              <div className="flex justify-end gap-3 pt-2">
+            </div>
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 dark:border-gray-700 flex-shrink-0">
                 <button
                   type="button"
                   onClick={() => { setModalOpen(false); reset(); }}
@@ -318,7 +510,6 @@ export const ProjectsPage: React.FC = () => {
                 >
                   {createMutation.isPending ? 'Creating…' : 'Create Project'}
                 </button>
-              </div>
             </div>
           </DialogPanel>
         </div>
